@@ -1,0 +1,91 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+*.local
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Pinata credentials
+.env.pinata
+
+# ===========================================
+# Backend Server (keep private for now)
+# ===========================================
+server.js
+/routes/
+/services/
+/config/
+
+# ===========================================
+# Bot Scripts (proprietary)
+# ===========================================
+telegram-bot.js
+bnbBuyBot.js
+start-bnb-buy-bot.sh
+ecosystem.config.cjs
+
+# ===========================================
+# Scripts Directory (admin tools)
+# ===========================================
+/scripts/
+
+# ===========================================
+# Logs Directory
+# ===========================================
+/logs/
+clzdServer.log
+sprite-output.log
+
+# ===========================================
+# Marketing & Docs (not needed for dApp)
+# ===========================================
+/marketing/
+BNB_BUY_BOT_README.md
+check-gankzard-gold.cjs
+
+# ===========================================
+# Binary/Data Files
+# ===========================================
+clzdTg
+/public/uploads/
+
+# ===========================================
+# Test Routes (future release)
+# ===========================================
+src/routes/testRoutes.tsx
+
+# ===========================================
+# Temporary/Generated Files
+# ===========================================
+*.tar.gz
+/data/
+
+# ===========================================
+# Smart Contracts (keep private)
+# ===========================================
+*.sol

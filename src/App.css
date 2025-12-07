@@ -1,0 +1,1443 @@
+@import "tailwindcss";
+
+/* Grid animation for landing page */
+@keyframes gridMove {
+  0% {
+    transform: translateY(0) translateX(0);
+  }
+  100% {
+    transform: translateY(50px) translateX(50px);
+  }
+}
+
+:root {
+  /* Modern Natural Color Palette - 2025 */
+  --primary-gold: #F4D03F;
+  --secondary-gold: #F1C40F;
+  --dark-gold: #D4AC0D;
+  --accent-gold: #E67E22;
+
+  /* Natural Greens */
+  --neon-green: #00FF88;
+  --soft-green: #00DD77;
+  --dark-green: #00BB66;
+
+  /* Modern Blues */
+  --neon-blue: #3498DB;
+  --soft-blue: #5DADE2;
+  --deep-blue: #2C3E50;
+
+  /* Background System */
+  --dark-bg: #000000;
+  --card-bg: #000000;
+  --surface-bg: #000000;
+  --elevated-bg: #000000;
+
+  /* Text Hierarchy */
+  --text-primary: #FFFFFF;
+  --text-secondary: #BDC3C7;
+  --text-muted: #7F8C8D;
+  --text-accent: #F39C12;
+  --chat-message-text: #FFD700; /* Bright gold for chat messages */
+
+  /* Glass Effects */
+  --glass-bg: rgba(255, 255, 255, 0.05);
+  --glass-border: rgba(255, 255, 255, 0.1);
+  --glass-shadow: rgba(0, 0, 0, 0.2);
+
+  /* Natural Gradients */
+  --gradient-primary: linear-gradient(135deg, var(--primary-gold) 0%, var(--accent-gold) 100%);
+  --gradient-secondary: linear-gradient(135deg, var(--neon-green) 0%, var(--soft-green) 100%);
+  --gradient-surface: linear-gradient(135deg, var(--card-bg) 0%, var(--surface-bg) 100%);
+  --gradient-accent: linear-gradient(135deg, var(--neon-blue) 0%, var(--soft-blue) 100%);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  height: auto !important;
+}
+
+body {
+  font-family: 'Inter', sans-serif;
+  background: var(--dark-bg);
+  color: var(--text-primary);
+  margin: 0 !important;
+  padding: 0 !important;
+  /* Allow scrolling on all devices */
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  min-height: 100vh !important;
+  height: auto !important;
+  /* Modern typography improvements */
+  font-feature-settings: "kern" 1, "liga" 1, "calt" 1, "pnum" 1, "tnum" 0, "onum" 1, "lnum" 0, "dlig" 0;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  /* Enable smooth touch scrolling on iOS */
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Ensure main content area allows scrolling */
+main {
+  overflow-y: visible !important;
+  overflow-x: hidden !important;
+  height: auto !important;
+  min-height: auto !important;
+}
+
+/* Terminal-Style Reel Design - 2025 */
+.reel {
+  /* Pure black background for terminal aesthetic */
+  background: #000000;
+
+  /* Green terminal border with glow */
+  border: 2px solid var(--neon-green);
+  border-radius: 8px;
+  height: 320px;
+  position: relative;
+  overflow: hidden;
+
+  /* Terminal green glow effect */
+  box-shadow:
+    inset 0 0 20px rgba(39, 174, 96, 0.1),     /* Inner green glow */
+    0 0 20px rgba(39, 174, 96, 0.3),           /* Outer green glow */
+    0 4px 15px rgba(0, 0, 0, 0.5);             /* External shadow */
+
+  /* Remove backdrop blur for sharper terminal look */
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+/* Ensure the spinning container can be transformed */
+.reel-spinner {
+  will-change: transform;
+  transform: translateZ(0); /* Force hardware acceleration */
+}
+
+.reel::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--neon-green), transparent);
+  border-radius: 8px 8px 0 0;
+  z-index: 10;
+  opacity: 0.6;
+}
+
+.reel::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--neon-green), transparent);
+  border-radius: 0 0 8px 8px;
+  z-index: 10;
+  opacity: 0.6;
+}
+
+/* Terminal-Style Symbol Container - Pure Black with Green Glow */
+.symbol-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  /* Pure black background for terminal aesthetic */
+  background: #000000;
+
+  /* Subtle green borders for terminal style */
+  border-top: 1px solid rgba(39, 174, 96, 0.2);
+  border-bottom: 1px solid rgba(39, 174, 96, 0.2);
+
+  /* Terminal green glow effect */
+  box-shadow:
+    inset 0 0 10px rgba(39, 174, 96, 0.05),    /* Inner green glow */
+    0 0 8px rgba(39, 174, 96, 0.15);           /* Outer green glow */
+
+  margin: 2px 0; /* Terminal spacing */
+  border-radius: 6px;
+
+  /* Remove backdrop blur for sharper terminal look */
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+.symbol {
+  width: 85%;
+  height: 85%;
+  object-fit: contain;
+
+  /* Terminal-style symbol with subtle green glow */
+  filter:
+    drop-shadow(0 0 4px rgba(39, 174, 96, 0.2))
+    drop-shadow(0 0 2px rgba(39, 174, 96, 0.15))
+    contrast(1.1)
+    saturate(1.15)
+    brightness(1.05);
+
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  z-index: 2;
+
+  /* Remove background for pure terminal look */
+  background: transparent;
+  border-radius: 4px;
+}
+
+.reel.spinning .symbol {
+  opacity: 0.95;
+  transform: scale(0.98); /* Slight scale down for speed effect */
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+/* Advanced spinning effects */
+.reel.spinning {
+  position: relative;
+  
+  /* Add motion blur effect during spin */
+  .symbol-container {
+    background: 
+      linear-gradient(90deg,
+        rgba(240, 240, 240, 0.9) 0%,
+        rgba(255, 255, 255, 0.95) 50%,
+        rgba(240, 240, 240, 0.9) 100%
+      );
+    
+    /* Blur effect for motion */
+    filter: blur(0.5px);
+  }
+  
+  .symbol {
+    /* Motion effects during spinning */
+    opacity: 0.85;
+    filter: 
+      drop-shadow(0 1px 2px rgba(0, 0, 0, 0.2))
+      blur(0.3px);
+  }
+}
+
+/* Clear spinning effects when not spinning */
+.reel:not(.spinning) {
+  .symbol-container {
+    filter: none !important;
+  }
+  
+  .symbol {
+    filter: 
+      drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3))
+      contrast(1.1)
+      saturate(1.1) !important;
+    opacity: 1 !important;
+    transform: scale(1) !important;
+  }
+}
+
+/* Terminal-Style Winning Symbol Effects - subtle */
+.symbol-container.winning {
+  /* Pure black with yellow glow for wins */
+  background: #000000;
+
+  /* Yellow terminal borders for winning symbols */
+  border-top: 1px solid rgba(244, 208, 63, 0.6);
+  border-bottom: 1px solid rgba(244, 208, 63, 0.6);
+  border-left: 1px solid rgba(244, 208, 63, 0.3);
+  border-right: 1px solid rgba(244, 208, 63, 0.3);
+
+  animation: terminal-winning-pulse 2s ease-in-out infinite alternate;
+  box-shadow:
+    inset 0 0 8px rgba(244, 208, 63, 0.05),
+    0 0 10px rgba(244, 208, 63, 0.25),
+    0 0 15px rgba(244, 208, 63, 0.15);
+
+  .symbol {
+    filter:
+      drop-shadow(0 0 8px rgba(244, 208, 63, 0.3))
+      drop-shadow(0 0 4px rgba(244, 208, 63, 0.2))
+      contrast(1.1)
+      saturate(1.15)
+      brightness(1.1);
+    animation: terminal-symbol-glow 1.5s ease-in-out infinite alternate;
+  }
+}
+
+@keyframes terminal-winning-pulse {
+  0% {
+    background: #000000;
+    box-shadow:
+      inset 0 0 8px rgba(244, 208, 63, 0.05),
+      0 0 10px rgba(244, 208, 63, 0.25),
+      0 0 15px rgba(244, 208, 63, 0.15);
+  }
+  100% {
+    background: #000000;
+    box-shadow:
+      inset 0 0 10px rgba(244, 208, 63, 0.08),
+      0 0 15px rgba(244, 208, 63, 0.35),
+      0 0 20px rgba(244, 208, 63, 0.2);
+  }
+}
+
+@keyframes terminal-symbol-glow {
+  0% {
+    filter:
+      drop-shadow(0 0 8px rgba(244, 208, 63, 0.3))
+      drop-shadow(0 0 4px rgba(244, 208, 63, 0.2))
+      contrast(1.1)
+      saturate(1.15)
+      brightness(1.1);
+  }
+  100% {
+    filter:
+      drop-shadow(0 0 10px rgba(244, 208, 63, 0.4))
+      drop-shadow(0 0 5px rgba(244, 208, 63, 0.25))
+      contrast(1.12)
+      saturate(1.2)
+      brightness(1.12);
+  }
+}
+
+.reel.spinning::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    180deg,
+    rgba(0, 255, 136, 0.1) 0%,
+    transparent 20%,
+    transparent 80%,
+    rgba(0, 187, 255, 0.1) 100%
+  );
+  pointer-events: none;
+  z-index: 5;
+  animation: speed-lines 0.5s linear infinite;
+}
+
+@keyframes speed-lines {
+  0% {
+    background-position: 0 0;
+  }
+  100% {
+    background-position: 0 20px;
+  }
+}
+
+/* Removed motion blur effect - now sharp and bright */
+@keyframes motion-sharp {
+  0% {
+    filter: brightness(1.2);
+  }
+  50% {
+    filter: brightness(1.3);
+  }
+  100% {
+    filter: brightness(1.2);
+  }
+}
+
+/* Terminal-Style Free Spin Glow Effects - subtle */
+.reel.spinning.glow {
+  box-shadow:
+    inset 0 0 10px rgba(244, 208, 63, 0.1),
+    0 0 15px rgba(244, 208, 63, 0.25),
+    0 0 25px rgba(244, 208, 63, 0.15),
+    0 4px 15px rgba(0, 0, 0, 0.5);
+  animation: terminal-glow 2s ease-in-out infinite alternate;
+  border-color: rgba(244, 208, 63, 0.8);
+}
+
+@keyframes terminal-glow {
+  0% {
+    box-shadow:
+      inset 0 0 10px rgba(244, 208, 63, 0.1),
+      0 0 15px rgba(244, 208, 63, 0.25),
+      0 0 25px rgba(244, 208, 63, 0.15),
+      0 4px 15px rgba(0, 0, 0, 0.5);
+  }
+  100% {
+    box-shadow:
+      inset 0 0 12px rgba(244, 208, 63, 0.12),
+      0 0 20px rgba(244, 208, 63, 0.35),
+      0 0 30px rgba(244, 208, 63, 0.2),
+      0 6px 20px rgba(0, 0, 0, 0.6);
+  }
+}
+
+/* Enhanced jackpot flash with particles */
+.jackpot-flash {
+  position: relative;
+  overflow: hidden;
+}
+
+.jackpot-flash::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: radial-gradient(circle, rgba(255, 215, 0, 0.3) 0%, transparent 70%);
+  animation: jackpot-particles 0.8s ease-in-out infinite alternate;
+  pointer-events: none;
+  z-index: 10;
+}
+
+@keyframes jackpot-particles {
+  0% {
+    background: radial-gradient(circle at 20% 20%, rgba(255, 215, 0, 0.3) 0%, transparent 70%);
+  }
+  25% {
+    background: radial-gradient(circle at 80% 20%, rgba(255, 215, 0, 0.4) 0%, transparent 70%);
+  }
+  50% {
+    background: radial-gradient(circle at 80% 80%, rgba(255, 215, 0, 0.3) 0%, transparent 70%);
+  }
+  75% {
+    background: radial-gradient(circle at 20% 80%, rgba(255, 215, 0, 0.4) 0%, transparent 70%);
+  }
+  100% {
+    background: radial-gradient(circle at 20% 20%, rgba(255, 215, 0, 0.3) 0%, transparent 70%);
+  }
+}
+
+/* Enhanced stopping animation */
+.symbol-container.stopping {
+  animation: symbol-stop 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes symbol-stop {
+  0% {
+    transform: scale(1.02);
+    filter: brightness(1.1);
+  }
+  50% {
+    transform: scale(0.98);
+    filter: brightness(1.05);
+  }
+  100% {
+    transform: scale(1);
+    filter: brightness(1);
+  }
+}
+
+.symbol:hover {
+  transform: scale(1.05);
+  filter: drop-shadow(0 4px 8px rgba(255, 215, 0, 0.3));
+}
+
+/* Enhanced symbol effects */
+.symbol-container {
+  position: relative;
+  width: 100%;
+  height: 106px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.symbol-container::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 215, 0, 0.05));
+  border-radius: 8px;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.symbol-container:hover::before {
+  opacity: 1;
+}
+
+.symbol-container.winning {
+  animation: symbol-win 0.6s ease-in-out;
+}
+
+@keyframes symbol-win {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+}
+
+.symbol-container.winning::after {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  background: linear-gradient(45deg, var(--neon-green), var(--neon-blue), var(--primary-gold), var(--neon-green));
+  background-size: 400% 400%;
+  animation: rainbow-border 2s ease infinite;
+  border-radius: 10px;
+  z-index: -1;
+}
+
+@keyframes rainbow-border {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+/* Special symbol effects */
+.symbol-special {
+  position: relative;
+}
+
+.symbol-special::before {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  background: conic-gradient(from 0deg, var(--primary-gold), var(--secondary-gold), var(--primary-gold));
+  border-radius: 12px;
+  z-index: -1;
+  animation: rotate 4s linear infinite;
+  opacity: 0.7;
+}
+
+@keyframes rotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Jackpot symbol special effect */
+.symbol-jackpot {
+  filter: drop-shadow(0 0 10px var(--primary-gold)) drop-shadow(0 0 20px var(--secondary-gold));
+  animation: jackpot-pulse 2s ease-in-out infinite alternate;
+}
+
+@keyframes jackpot-pulse {
+  0% {
+    filter: drop-shadow(0 0 10px var(--primary-gold)) drop-shadow(0 0 20px var(--secondary-gold)) brightness(1);
+  }
+  100% {
+    filter: drop-shadow(0 0 20px var(--primary-gold)) drop-shadow(0 0 40px var(--secondary-gold)) brightness(1.2);
+  }
+}
+
+/* Scatter symbol special effect */
+.symbol-scatter {
+  filter: drop-shadow(0 0 8px var(--neon-blue));
+  animation: scatter-glow 3s ease-in-out infinite alternate;
+}
+
+@keyframes scatter-glow {
+  0% { filter: drop-shadow(0 0 8px var(--neon-blue)) hue-rotate(0deg); }
+  100% { filter: drop-shadow(0 0 16px var(--neon-blue)) hue-rotate(30deg); }
+}
+
+/* Lizard symbol special effect (bonus game trigger) */
+.symbol-lizard {
+  filter: drop-shadow(0 0 6px var(--neon-green));
+  animation: lizard-bounce 4s ease-in-out infinite;
+}
+
+@keyframes lizard-bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-2px); }
+}
+
+.glow {
+  box-shadow:
+    0 0 30px var(--primary-gold),
+    0 0 60px rgba(255, 215, 0, 0.3),
+    inset 0 0 30px rgba(255, 215, 0, 0.1);
+  animation: glow-pulse 2s infinite alternate;
+  border-color: var(--neon-green) !important;
+}
+
+@keyframes glow-pulse {
+  0% {
+    box-shadow:
+      0 0 20px var(--primary-gold),
+      0 0 40px rgba(255, 215, 0, 0.2),
+      inset 0 0 20px rgba(255, 215, 0, 0.1);
+  }
+  100% {
+    box-shadow:
+      0 0 40px var(--secondary-gold),
+      0 0 80px rgba(212, 175, 55, 0.4),
+      inset 0 0 40px rgba(255, 215, 0, 0.2);
+  }
+}
+
+@keyframes reel-shake {
+  0%, 100% { transform: translateX(0); }
+  10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+  20%, 40%, 60%, 80% { transform: translateX(5px); }
+}
+
+.reel-winning {
+  animation: reel-shake 0.5s ease-in-out;
+}
+
+.jackpot-flash {
+  animation: jackpot-flash 0.8s ease-in-out infinite alternate;
+}
+
+@keyframes jackpot-flash {
+  0% {
+    box-shadow:
+      0 0 50px #00FF88,
+      0 0 100px #00BFFF,
+      inset 0 0 50px rgba(0, 255, 136, 0.3);
+  }
+  100% {
+    box-shadow:
+      0 0 80px #FFD700,
+      0 0 150px #FFA500,
+      inset 0 0 80px rgba(255, 215, 0, 0.5);
+  }
+}
+
+.win-highlight {
+  position: relative;
+}
+
+.win-highlight::after {
+  content: '';
+  position: absolute;
+  top: -5px;
+  left: -5px;
+  right: -5px;
+  bottom: -5px;
+  background: linear-gradient(45deg, var(--neon-green), var(--neon-blue), var(--primary-gold));
+  border-radius: 8px;
+  z-index: -1;
+  animation: win-glow 1.5s ease-in-out infinite alternate;
+}
+
+@keyframes win-glow {
+  0% { opacity: 0.6; transform: scale(1); }
+  100% { opacity: 1; transform: scale(1.02); }
+}
+
+/* Custom slider styling */
+.slider::-webkit-slider-thumb {
+  appearance: none;
+  height: 20px;
+  width: 20px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--primary-gold), var(--secondary-gold));
+  cursor: pointer;
+  border: 2px solid #ffffff;
+  box-shadow: 0 2px 8px rgba(255, 215, 0, 0.3);
+  transition: all 0.2s ease;
+}
+
+.slider::-webkit-slider-thumb:hover {
+  transform: scale(1.1);
+  box-shadow: 0 4px 12px rgba(255, 215, 0, 0.5);
+}
+
+.slider::-webkit-slider-track {
+  width: 100%;
+  height: 6px;
+  cursor: pointer;
+  background: linear-gradient(90deg, rgba(255, 215, 0, 0.2), rgba(255, 215, 0, 0.6));
+  border-radius: 3px;
+}
+
+.slider::-moz-range-thumb {
+  height: 20px;
+  width: 20px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--primary-gold), var(--secondary-gold));
+  cursor: pointer;
+  border: 2px solid #ffffff;
+  box-shadow: 0 2px 8px rgba(255, 215, 0, 0.3);
+  transition: all 0.2s ease;
+}
+
+.slider::-moz-range-thumb:hover {
+  transform: scale(1.1);
+  box-shadow: 0 4px 12px rgba(255, 215, 0, 0.5);
+}
+
+.slider::-moz-range-track {
+  width: 100%;
+  height: 6px;
+  cursor: pointer;
+  background: linear-gradient(90deg, rgba(255, 215, 0, 0.2), rgba(255, 215, 0, 0.6));
+  border-radius: 3px;
+}
+
+/* Scrollbar styling for paytable */
+.paytable-scroll::-webkit-scrollbar {
+  width: 8px;
+}
+
+.paytable-scroll::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+}
+
+.paytable-scroll::-webkit-scrollbar-thumb {
+  background: linear-gradient(135deg, var(--primary-gold), var(--secondary-gold));
+  border-radius: 4px;
+}
+
+.paytable-scroll::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(135deg, var(--secondary-gold), var(--dark-gold));
+}
+
+/* Character selector scrollbar styling - matches site theme */
+.character-list-scroll::-webkit-scrollbar {
+  width: 8px;
+}
+
+.character-list-scroll::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 4px;
+}
+
+.character-list-scroll::-webkit-scrollbar-thumb {
+  background: linear-gradient(135deg, #00FF88, #00DD77);
+  border-radius: 4px;
+  border: 1px solid rgba(0, 255, 136, 0.3);
+}
+
+.character-list-scroll::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(135deg, #00DD77, #00BB66);
+  box-shadow: 0 0 8px rgba(0, 255, 136, 0.4);
+}
+
+/* Firefox scrollbar styling */
+.character-list-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: #00FF88 rgba(0, 0, 0, 0.3);
+}
+
+/* Animation for loading states */
+@keyframes pulse-glow {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scale(1.02);
+  }
+}
+
+.loading-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+/* Modern Button Effects */
+button {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  cursor: pointer;
+  min-height: 44px; /* Accessible touch target */
+  /* Let individual button classes control background and color */
+  /* Border radius removed - let individual components control rounding */
+}
+
+button:hover:not(:disabled) {
+  transform: scale(1.05);
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-glow:hover {
+  box-shadow:
+    0 0 12px rgba(244, 208, 63, 0.15),
+    0 0 25px rgba(241, 196, 15, 0.08),
+    inset 0 0 12px rgba(244, 208, 63, 0.05),
+    0 4px 16px rgba(0, 0, 0, 0.2);
+  transform: translateY(-1px);
+  border-color: rgba(244, 208, 63, 0.4);
+}
+
+/* Text gradient animation */
+@keyframes text-shimmer {
+  0% { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+
+.text-gradient-animated {
+  background: linear-gradient(90deg, var(--primary-gold), var(--secondary-gold), var(--primary-gold));
+  background-size: 200% 100%;
+  animation: text-shimmer 3s ease-in-out infinite;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Particle effect styles */
+.particles {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.particle {
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  background: var(--primary-gold);
+  border-radius: 50%;
+  animation: float-up 3s ease-out forwards;
+}
+
+@keyframes float-up {
+  0% {
+    opacity: 1;
+    transform: translateY(0) rotate(0deg);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-100px) rotate(360deg);
+  }
+}
+
+/* Custom number input styling */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+input[type="number"] {
+  -moz-appearance: textfield;
+}
+
+/* Bet input special effects */
+.bet-input-container {
+  position: relative;
+}
+
+.bet-input-container::before {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  background: linear-gradient(45deg, var(--neon-green), var(--neon-blue), var(--primary-gold));
+  border-radius: 14px;
+  z-index: -1;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.bet-input-container:focus-within::before {
+  opacity: 0.6;
+  animation: rainbow-border 2s ease infinite;
+}
+
+/* Modern Preset Button Effects - subtle */
+.preset-button-active {
+  box-shadow:
+    0 0 10px rgba(244, 208, 63, 0.2),
+    0 0 20px rgba(241, 196, 15, 0.1),
+    inset 0 0 8px rgba(244, 208, 63, 0.05);
+  transform: scale(1.02);
+  border-color: rgba(244, 208, 63, 0.5);
+  background: var(--gradient-primary);
+}
+
+.preset-button-active::before {
+  content: '🎰';
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  background: var(--gradient-primary);
+  border-radius: 50%;
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9px;
+  color: var(--deep-blue);
+  font-weight: bold;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+/* Screen shake animation for jackpot */
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+  20%, 40%, 60%, 80% { transform: translateX(5px); }
+}
+
+.shake {
+  animation: shake 0.5s ease-in-out;
+}
+
+#root {
+  width: 100%;
+  min-height: 100vh;
+}
+
+.logo {
+  height: 6em;
+  padding: 1.5em;
+  will-change: filter;
+  transition: filter 300ms;
+}
+
+.logo:hover {
+  filter: drop-shadow(0 0 2em #00FF8880); /* Emerald green shadow */
+}
+
+.logo.react:hover {
+  filter: drop-shadow(0 0 2em #34D39980); /* Lighter emerald */
+}
+
+@keyframes logo-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  a:nth-of-type(2) .logo {
+    animation: logo-spin infinite 20s linear;
+  }
+}
+
+.card {
+  padding: 2em;
+}
+
+.read-the-docs {
+  color: #D4AF37; /* Darker gold for secondary text */
+}
+
+/* Mobile-specific adjustments - OPTIMIZED FOR PERFORMANCE */
+.md-hidden {
+  display: none !important;
+}
+
+@media (max-width: 768px) {
+  /* Mobile viewport optimization */
+  body {
+    min-height: 100dvh; /* Dynamic viewport height for mobile */
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+
+  .md-hidden {
+    display: block !important;
+  }
+  
+  /* MOBILE FONT SIZE FIXES - Keep these */
+  .mobile-slots-title {
+    font-size: 2.5rem !important;
+    line-height: 1.1 !important;
+    margin-bottom: 0.5rem !important;
+  }
+  
+  .mobile-brand-title {
+    font-size: 1.25rem !important;
+    line-height: 1.2 !important;
+  }
+  
+  .mobile-bet-amount {
+    font-size: 1.5rem !important;
+  }
+  
+  .mobile-dashboard-text {
+    font-size: 0.75rem !important;
+  }
+  
+  .mobile-stats-text {
+    font-size: 1.25rem !important;
+  }
+
+  /* Improve reel spacing and layout on mobile - more compact */
+  main, main.grid {
+    gap: 0.25rem !important;
+    padding: 0.5rem !important;
+    margin-top: 0.25rem !important;
+    margin-bottom: 0.25rem !important;
+  }
+
+  /* Compress vertical spacing on mobile */
+  .mt-3, .mt-6 {
+    margin-top: 0.5rem !important;
+  }
+
+  .mb-3, .mb-6 {
+    margin-bottom: 0.5rem !important;
+  }
+
+  .gap-4 {
+    gap: 1rem !important;
+  }
+
+  /* MOBILE REEL STYLING - OPTIMIZED FOR SMOOTH ANIMATION */
+  .reel {
+    height: 240px !important; /* Match JS reelHeight for mobile */
+    border-radius: 8px !important;
+    border: 1px solid rgba(255, 215, 0, 0.3) !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2) !important;
+    background: #000000 !important;
+    /* Modern GPU acceleration - force GPU layer for CSS animations */
+    transform: translate3d(0, 0, 0);
+    will-change: transform;
+    overflow: hidden !important;
+    /* Stricter clipping for mobile CSS fallback */
+    clip-path: inset(0px 0px 0px 0px);
+    -webkit-clip-path: inset(0px 0px 0px 0px);
+    position: relative;
+  }
+
+  /* MOBILE REEL SPINNER - OPTIMIZED FOR SMOOTH ANIMATION */
+  .reel-spinner {
+    /* Enhanced GPU optimization (from sample suggestions) */
+    will-change: transform;
+    transform: translate3d(0, 0, 0);
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    /* Simplified - removed contain property that can interfere with animations */
+    /* Smooth scrolling optimization */
+    -webkit-overflow-scrolling: touch;
+    /* Prevent touch interference during animation */
+    touch-action: none;
+  }
+
+  /* MOBILE SYMBOLS - OPTIMIZED FOR SMOOTH RENDERING */
+  .symbol {
+    height: 70px !important; /* Match JS symbolHeight for mobile */
+    width: auto !important;
+    max-width: 100% !important;
+    /* Modern GPU acceleration without conflicts */
+    transform: translate3d(0, 0, 0);
+    /* Let animations control will-change */
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    /* Crisp, high-quality rendering */
+    image-rendering: -webkit-optimize-contrast;
+    image-rendering: crisp-edges;
+  }
+
+  /* MOBILE SPINNING - OPTIMIZED COMPATIBILITY */
+  .reel.spinning .symbol {
+    /* Maintain visual quality during spin */
+    opacity: 1;
+    /* Let animations handle transforms */
+    filter: brightness(1.05);
+    /* Ensure smooth rendering */
+    image-rendering: -webkit-optimize-contrast;
+    image-rendering: crisp-edges;
+  }
+
+  /* MOBILE REEL SPINNING - ENHANCED VISUAL FEEDBACK */
+  .reel.spinning {
+    /* Subtle brightness boost for spinning feedback */
+    filter: brightness(1.05) saturate(1.1);
+    /* Maintain layer compositing */
+    contain: layout style paint;
+  }
+
+  /* SIMPLIFIED MOBILE SPINNING EFFECTS */
+  .reel.spinning::before {
+    /* Subtle speed effect for mobile */
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(180deg, 
+      rgba(0, 255, 136, 0.05) 0%, 
+      transparent 50%, 
+      rgba(0, 187, 255, 0.05) 100%);
+    pointer-events: none;
+    z-index: 5;
+  }
+
+  /* MOBILE STOPPING - OPTIMIZED */
+  .symbol-container.stopping {
+    /* Let Framer Motion handle the spring animation */
+    animation: none !important;
+  }
+
+  /* MOBILE GLOW EFFECTS - SIMPLIFIED */
+  .reel.spinning.glow {
+    box-shadow: 0 0 15px var(--primary-gold) !important;
+    animation: none !important; /* Let Framer Motion handle */
+  }
+
+  /* MOBILE JACKPOT EFFECTS - SIMPLIFIED */
+  .jackpot-flash {
+    filter: initial !important;
+  }
+  
+  .jackpot-flash::before {
+    display: none !important;
+  }
+
+  /* MOBILE SYMBOL CONTAINER - SIMPLIFIED */
+  .symbol-container {
+    height: 70px !important; /* Match JS symbolHeight for mobile */
+    border-radius: 4px !important;
+    /* Essential for smooth animation */
+    transform: translateZ(0);
+    will-change: transform;
+    background: none !important;
+    border: none !important;
+    /* Let Framer Motion handle positioning */
+    position: relative !important;
+  }
+
+  /* REMOVE CONFLICTING GLOW EFFECTS */
+  .reel.glow {
+    box-shadow: none !important;
+  }
+
+  .jackpot-flash {
+    animation: none !important;
+  }
+
+  /* Improve button touch targets on mobile */
+  button, input[type="button"], input[type="submit"] {
+    min-height: 44px !important;
+    min-width: 44px !important;
+    touch-action: manipulation;
+  }
+
+  /* Better text readability on mobile */
+  body {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* Improve input field usability on mobile */
+  input[type="number"] {
+    font-size: 16px !important; /* Prevents zoom on iOS */
+  }
+
+  /* Better spacing for mobile containers */
+  .container, .max-w-5xl, .max-w-6xl {
+    padding-left: 0.25rem !important;
+    padding-right: 0.25rem !important;
+  }
+
+  /* Enhanced mobile dashboard styling */
+  .mobile-dashboard {
+    width: 100%;
+    max-width: 100vw;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 0.25rem;
+    background: #000000;
+    border: 2px solid rgba(255, 215, 0, 0.5);
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(255, 215, 0, 0.2);
+    font-size: 0.7rem;
+    line-height: 1.1;
+    gap: 0.15rem;
+    margin: 0.25rem 0;
+    flex-wrap: nowrap;
+    box-sizing: border-box;
+  }
+
+  .mobile-dashboard div {
+    padding: 0.2rem 0.25rem;
+    border-radius: 4px;
+    background: #000000;
+    border: 1px solid rgba(255, 215, 0, 0.4);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    text-align: center;
+    min-width: 40px;
+    max-width: 60px;
+    flex-shrink: 0;
+  }
+
+  .mobile-dashboard .text-xs {
+    font-size: 0.55rem;
+    margin-bottom: 0.1rem;
+  }
+
+  .mobile-dashboard .text-sm {
+    font-size: 0.65rem;
+    font-weight: 600;
+  }
+
+  /* Improve particle effects performance on mobile */
+  .particles {
+    will-change: transform;
+  }
+
+  /* REMOVE ALL BACKDROP BLUR ON MOBILE - LET FRAMER MOTION WORK */
+  .backdrop-blur-sm,
+  .backdrop-blur-xl,
+  .backdrop-blur-lg,
+  .backdrop-blur-md,
+  .backdrop-blur {
+    backdrop-filter: none !important;
+    filter: brightness(1.1) !important;
+  }
+  
+  [class*="backdrop-blur"] {
+    backdrop-filter: none !important;
+    filter: brightness(1.1) !important;
+  }
+  
+  [style*="filter: blur"],
+  [style*="backdrop-filter"],
+  .blur {
+    filter: brightness(1.2) !important;
+    backdrop-filter: none !important;
+  }
+  
+  /* Target common blur classes */
+  .bg-gray-900\/95.backdrop-blur-xl,
+  .bg-gray-900\/90.backdrop-blur-sm,
+  .bg-gray-800\/90.backdrop-blur-sm,
+  .bg-gray-800\/50.backdrop-blur-sm,
+  .bg-black\/50.backdrop-blur-sm,
+  .bg-black\/80.backdrop-blur-sm,
+  .bg-black\/90.backdrop-blur-sm {
+    backdrop-filter: none !important;
+    filter: brightness(1.15) !important;
+  }
+}
+
+/* Ensure desktop remains unchanged */
+@media (min-width: 769px) {
+  main.grid {
+    gap: 1rem;
+    margin-top: 1rem;
+    margin-bottom: 1rem;
+  }
+
+  .reel {
+    height: 320px;
+  }
+
+  .reel-spinner {
+    will-change: transform;
+    transform: translateZ(0);
+  }
+
+  .symbol {
+    height: 106px;
+  }
+
+  .symbol-container {
+    height: 106px;
+  }
+}
+
+/* Reusable page content spacing utility */
+.page-content {
+  padding-top: 6rem; /* 96px - matches header height */
+}
+
+@media (min-width: 768px) {
+  .page-content {
+    padding-top: 8rem; /* 128px - for larger screens */
+  }
+}
+
+/* Premium GameFi Landing Page Enhancements */
+@media (max-width: 768px) {
+  .page-content {
+    padding-top: 6rem;
+  }
+
+  /* Better mobile spacing for stats */
+  .mobile-stats-grid {
+    gap: 0.75rem !important;
+  }
+
+  /* Optimize game cards for mobile */
+  .mobile-game-card {
+    padding: 1.5rem !important;
+  }
+
+  /* Reduce excessive animations on mobile for performance */
+  @media (prefers-reduced-motion: no-preference) {
+    .mobile-reduce-motion {
+      animation-duration: 0.5s !important;
+    }
+  }
+}
+
+/* Mobile spinning animation fallback - CSS only */
+@media (max-width: 768px) {
+  .reel-spinner-css-fallback {
+    animation: premiumMobileSpin 2s linear infinite;
+    transform-origin: center top;
+    /* Enhanced GPU acceleration for CSS fallback */
+    will-change: transform;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    transform: translate3d(0, 0, 0);
+  }
+  
+  .reel-spinner-css-fallback .symbol-container {
+    animation: none !important;
+    transform: none !important;
+    /* Mobile image optimization for CSS fallback */
+    image-rendering: optimizeSpeed;
+  }
+}
+
+@keyframes premiumMobileSpin {
+  0% {
+    transform: translate3d(0, 0, 0);
+  }
+  100% {
+    transform: translate3d(0, var(--spin-distance), 0);
+  }
+}
+
+@keyframes mobileReelGlow {
+  0% {
+    filter: brightness(1) saturate(1);
+  }
+  50% {
+    filter: brightness(1.1) saturate(1.2);
+  }
+  100% {
+    filter: brightness(1.05) saturate(1.1);
+  }
+}
+
+@keyframes mobileHapticPulse {
+  0%, 100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(0, 0, 0) scale(1.005);
+  }
+}
+
+@keyframes gentleMobileSpin {
+  0% {
+    transform: translate3d(0, 0, 0);
+  }
+  100% {
+    transform: translate3d(0, -2000px, 0);
+  }
+}
+
+/* Container query support for modern browsers */
+@container (max-width: 768px) {
+  .reel-spinner-css-fallback {
+    animation-duration: 1.8s;
+    animation-timing-function: cubic-bezier(0.25, 0.1, 0.25, 1);
+  }
+}
+
+/* Terminal Mobile Slot Machine Experience - 2025 */
+@media (max-width: 768px) {
+  .reel {
+    height: 240px !important; /* Match JS reelHeight for mobile */
+    border: 2px solid var(--neon-green);
+
+    /* Pure black background for mobile terminal */
+    background: #000000;
+
+    /* Terminal green glow for mobile */
+    box-shadow:
+      inset 0 0 15px rgba(39, 174, 96, 0.1),
+      0 0 15px rgba(39, 174, 96, 0.3),
+      0 4px 15px rgba(0, 0, 0, 0.5);
+
+    /* No blur for sharp mobile terminal look */
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+
+  .symbol-container {
+    margin: 2px 0; /* Better spacing for mobile */
+    border-radius: 6px;
+
+    /* Pure black background for mobile terminal */
+    background: #000000;
+
+    /* Terminal green borders and glow */
+    border-top: 1px solid rgba(39, 174, 96, 0.2);
+    border-bottom: 1px solid rgba(39, 174, 96, 0.2);
+    box-shadow:
+      inset 0 0 8px rgba(39, 174, 96, 0.05),
+      0 0 6px rgba(39, 174, 96, 0.15);
+
+    /* No blur for sharp mobile terminal */
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+
+  .symbol {
+    width: 88%; /* Optimized for mobile touch */
+    height: 88%;
+    border-radius: 4px;
+
+    /* Terminal green glow for mobile symbols */
+    filter:
+      drop-shadow(0 0 6px rgba(39, 174, 96, 0.4))
+      drop-shadow(0 0 3px rgba(39, 174, 96, 0.3))
+      contrast(1.1)
+      saturate(1.15)
+      brightness(1.05);
+  }
+}
+
+/* Reduced motion support for all devices */
+@media (prefers-reduced-motion: reduce) {
+  .reel.spinning .symbol-container {
+    filter: none !important;
+  }
+  
+  .reel.spinning .symbol {
+    filter: none !important;
+    opacity: 0.9 !important;
+  }
+  
+  .symbol-container.winning {
+    animation: none !important;
+    box-shadow: 
+      inset 0 2px 4px rgba(255, 255, 255, 0.3),
+      inset 0 -2px 4px rgba(0, 0, 0, 0.1),
+      0 0 12px rgba(255, 215, 0, 0.5) !important;
+  }
+}
+/* ==========================================
+   FINAL CRITICAL OVERRIDES
+   Maximum specificity to override everything
+   ========================================== */
+
+html[lang],
+html {
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  height: auto !important;
+  max-height: none !important;
+}
+
+body.font-bbs,
+body {
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  height: auto !important;
+  min-height: 100vh !important;
+  max-height: none !important;
+}

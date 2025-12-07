@@ -1,0 +1,648 @@
+/* Quest Log Styles */
+
+.quest-log-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.9);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    animation: fadeIn 0.2s ease-in-out;
+    backdrop-filter: blur(4px);
+    overscroll-behavior: none;
+}
+
+.quest-log-container {
+    background: #0a0a0a;
+    border: 3px solid #eab308;
+    border-radius: 0;
+    width: 90%;
+    max-width: 1200px;
+    height: 85%;
+    max-height: 900px;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 0 30px rgba(234, 179, 8, 0.4), inset 0 0 20px rgba(234, 179, 8, 0.05);
+}
+
+/* Header */
+.quest-log-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 24px;
+    border-bottom: 3px solid #eab308;
+    background: linear-gradient(180deg, rgba(234, 179, 8, 0.15) 0%, rgba(234, 179, 8, 0.05) 100%);
+}
+
+.quest-log-header h2 {
+    margin: 0;
+    color: #eab308;
+    font-family: 'Press Start 2P', monospace;
+    font-size: 24px;
+    text-shadow: 0 0 10px rgba(234, 179, 8, 0.6), 0 0 20px rgba(234, 179, 8, 0.3);
+}
+
+.close-btn {
+    background: transparent;
+    border: 2px solid #eab308;
+    color: #eab308;
+    font-size: 20px;
+    font-family: 'Press Start 2P', monospace;
+    min-width: 40px;
+    height: 40px;
+    padding: 0 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-shadow: 0 0 5px rgba(234, 179, 8, 0.5);
+    box-shadow: 0 0 10px rgba(234, 179, 8, 0.2);
+}
+
+.close-btn:hover {
+    background: rgba(234, 179, 8, 0.2);
+    border-color: #fbbf24;
+    color: #fbbf24;
+    transform: translateY(-2px);
+    box-shadow: 0 0 20px rgba(234, 179, 8, 0.4), 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+/* Tabs */
+.quest-log-tabs {
+    display: flex;
+    padding: 12px 20px;
+    gap: 8px;
+    border-bottom: 2px solid #eab308;
+    background: rgba(0, 0, 0, 0.5);
+}
+
+.quest-log-tabs button {
+    padding: 10px 20px;
+    background: transparent;
+    border: 2px solid #555;
+    color: #888;
+    border-radius: 0;
+    cursor: pointer;
+    font-size: 13px;
+    font-family: 'Press Start 2P', monospace;
+    transition: all 0.2s;
+    text-transform: uppercase;
+}
+
+.quest-log-tabs button:hover {
+    border-color: #eab308;
+    color: #eab308;
+    background: rgba(234, 179, 8, 0.1);
+    box-shadow: 0 0 10px rgba(234, 179, 8, 0.2);
+}
+
+.quest-log-tabs button.active {
+    background: rgba(234, 179, 8, 0.2);
+    border-color: #eab308;
+    color: #eab308;
+    font-weight: bold;
+    box-shadow: 0 0 15px rgba(234, 179, 8, 0.3), inset 0 0 10px rgba(234, 179, 8, 0.1);
+    text-shadow: 0 0 5px rgba(234, 179, 8, 0.5);
+}
+
+/* Filters */
+.quest-log-filters {
+    display: flex;
+    padding: 10px 20px;
+    gap: 6px;
+    border-bottom: 2px solid #555;
+    background: rgba(0, 0, 0, 0.3);
+}
+
+.quest-log-filters button {
+    padding: 8px 14px;
+    background: transparent;
+    border: 1px solid #555;
+    color: #888;
+    border-radius: 0;
+    cursor: pointer;
+    font-size: 11px;
+    font-family: 'Press Start 2P', monospace;
+    transition: all 0.2s;
+    text-transform: uppercase;
+}
+
+.quest-log-filters button:hover {
+    background: rgba(234, 179, 8, 0.1);
+    border-color: #eab308;
+    color: #eab308;
+}
+
+.quest-log-filters button.active {
+    background: rgba(234, 179, 8, 0.15);
+    border-color: #eab308;
+    color: #eab308;
+    box-shadow: 0 0 10px rgba(234, 179, 8, 0.2);
+}
+
+/* Content */
+.quest-log-content {
+    flex: 1;
+    overflow: hidden;
+    background: #000;
+}
+
+.quest-list {
+    width: 100%;
+    overflow-y: auto;
+    padding: 16px;
+    background: linear-gradient(180deg, rgba(0, 0, 0, 0.8) 0%, rgba(0, 0, 0, 0.9) 100%);
+    height: 100%;
+}
+
+/* Available Quest Item */
+.available-quest-item {
+    margin-bottom: 12px;
+    background: rgba(20, 20, 20, 0.8);
+    border: 2px solid #333;
+    border-radius: 0;
+    transition: all 0.2s;
+}
+
+.available-quest-item:hover {
+    border-color: #eab308;
+    box-shadow: 0 0 15px rgba(234, 179, 8, 0.2);
+}
+
+.quest-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.quest-header:hover {
+    background: rgba(234, 179, 8, 0.05);
+}
+
+.quest-header-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex: 1;
+}
+
+.quest-icon {
+    font-size: 32px;
+}
+
+.quest-info {
+    flex: 1;
+}
+
+.quest-info h4 {
+    margin: 0 0 8px 0;
+    color: #eab308;
+    font-size: 13px;
+    font-family: 'Press Start 2P', monospace;
+    text-shadow: 0 0 5px rgba(234, 179, 8, 0.4);
+}
+
+.quest-meta {
+    display: flex;
+    gap: 12px;
+    font-size: 10px;
+    font-family: 'Courier New', monospace;
+}
+
+.quest-level {
+    color: #888;
+}
+
+.quest-difficulty {
+    font-weight: bold;
+    text-transform: uppercase;
+}
+
+.quest-team {
+    color: #60a5fa;
+}
+
+/* Active Quest Item */
+.active-quest-item {
+    padding: 16px;
+    margin-bottom: 12px;
+    background: rgba(20, 20, 20, 0.8);
+    border: 2px solid #eab308;
+    border-radius: 0;
+    box-shadow: 0 0 15px rgba(234, 179, 8, 0.2);
+    transition: all 0.2s;
+}
+
+.active-quest-header {
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.active-quest-header:hover {
+    background: rgba(234, 179, 8, 0.05);
+}
+
+.quest-header-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.active-quest-item h4 {
+    margin: 0;
+    color: #eab308;
+    font-size: 13px;
+    font-family: 'Press Start 2P', monospace;
+    text-shadow: 0 0 5px rgba(234, 179, 8, 0.4);
+}
+
+.expand-icon {
+    color: #eab308;
+    font-size: 12px;
+    transition: transform 0.2s;
+}
+
+.progress-bar {
+    height: 10px;
+    background: #222;
+    border: 1px solid #555;
+    border-radius: 0;
+    overflow: hidden;
+    margin-bottom: 8px;
+    box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.5);
+}
+
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #eab308, #fbbf24);
+    transition: width 0.3s ease;
+    box-shadow: 0 0 10px rgba(234, 179, 8, 0.5);
+}
+
+.progress-text {
+    font-size: 11px;
+    color: #888;
+    font-family: 'Courier New', monospace;
+}
+
+/* Active Quest Details (Expanded) */
+.active-quest-details {
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid #555;
+    animation: slideDown 0.3s ease-out;
+}
+
+.active-quest-details .quest-description {
+    font-size: 13px;
+    line-height: 1.6;
+    color: #ccc;
+    margin-bottom: 16px;
+    font-family: 'Courier New', monospace;
+}
+
+.quest-objectives-progress {
+    margin-bottom: 16px;
+}
+
+.quest-objectives-progress h5 {
+    margin: 0 0 10px 0;
+    color: #eab308;
+    font-size: 11px;
+    font-family: 'Press Start 2P', monospace;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.quest-objectives-progress ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.quest-objectives-progress li {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 0;
+    border-bottom: 1px solid #333;
+    font-size: 12px;
+    font-family: 'Courier New', monospace;
+}
+
+.quest-objectives-progress li:last-child {
+    border-bottom: none;
+}
+
+.quest-objectives-progress li.completed {
+    opacity: 0.7;
+}
+
+.quest-objectives-progress li.completed .objective-text {
+    text-decoration: line-through;
+    color: #888;
+}
+
+.objective-status {
+    font-size: 14px;
+}
+
+.objective-text {
+    flex: 1;
+    color: #ccc;
+}
+
+.objective-progress {
+    color: #eab308;
+    font-weight: bold;
+}
+
+.quest-rewards-preview {
+    margin-bottom: 12px;
+}
+
+.quest-rewards-preview h5 {
+    margin: 0 0 8px 0;
+    color: #eab308;
+    font-size: 11px;
+    font-family: 'Press Start 2P', monospace;
+    text-transform: uppercase;
+}
+
+.rewards-list {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.rewards-list span {
+    padding: 6px 10px;
+    background: rgba(234, 179, 8, 0.1);
+    border: 1px solid #eab308;
+    color: #eab308;
+    font-size: 11px;
+    font-family: 'Courier New', monospace;
+    box-shadow: 0 0 5px rgba(234, 179, 8, 0.2);
+}
+
+.quest-expiry {
+    margin-top: 12px;
+    padding: 8px;
+    background: rgba(239, 68, 68, 0.1);
+    border-left: 3px solid #ef4444;
+    font-size: 10px;
+    color: #ef4444;
+    font-family: 'Courier New', monospace;
+}
+
+.expires-at {
+    margin-top: 8px;
+    font-size: 10px;
+    color: #ef4444;
+    font-family: 'Courier New', monospace;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Quest Details Expanded */
+.quest-details-expanded {
+    padding: 16px;
+    border-top: 1px solid #555;
+    background: rgba(0, 0, 0, 0.4);
+    animation: slideDown 0.3s ease-out;
+    color: #e0e0e0;
+    font-family: 'Courier New', monospace;
+}
+
+.quest-details-expanded h5 {
+    margin: 16px 0 8px 0;
+    color: #eab308;
+    font-size: 11px;
+    font-family: 'Press Start 2P', monospace;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.quest-description {
+    font-size: 14px;
+    line-height: 1.7;
+    margin-bottom: 20px;
+    color: #ccc;
+}
+
+.quest-lore {
+    padding: 12px 16px;
+    background: rgba(234, 179, 8, 0.08);
+    border-left: 4px solid #eab308;
+    margin-bottom: 24px;
+    font-size: 13px;
+    color: #d1d5db;
+    font-style: italic;
+    box-shadow: inset 0 0 10px rgba(234, 179, 8, 0.05);
+}
+
+.quest-requirements,
+.quest-objectives,
+.quest-failure {
+    margin-bottom: 16px;
+}
+
+.quest-requirements ul,
+.quest-objectives ul,
+.quest-failure ul {
+    margin: 0;
+    padding-left: 20px;
+    font-size: 12px;
+    line-height: 1.6;
+}
+
+.quest-requirements li,
+.quest-objectives li,
+.quest-failure li {
+    margin-bottom: 6px;
+    color: #ccc;
+}
+
+.quest-rewards {
+    margin-bottom: 16px;
+}
+
+.quest-rewards .rewards-list {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.quest-rewards .rewards-list span {
+    padding: 6px 10px;
+    background: rgba(234, 179, 8, 0.1);
+    border: 1px solid #eab308;
+    color: #eab308;
+    font-size: 11px;
+    font-family: 'Courier New', monospace;
+    box-shadow: 0 0 5px rgba(234, 179, 8, 0.2);
+}
+
+.quest-failure {
+    background: rgba(239, 68, 68, 0.08);
+    padding: 16px;
+    border-left: 4px solid #ef4444;
+    border-radius: 0;
+    box-shadow: inset 0 0 10px rgba(239, 68, 68, 0.1);
+}
+
+/* Start Quest Button */
+.start-quest-btn {
+    width: 100%;
+    padding: 16px;
+    background: transparent;
+    border: 3px solid #eab308;
+    border-radius: 0;
+    color: #eab308;
+    font-size: 14px;
+    font-family: 'Press Start 2P', monospace;
+    font-weight: bold;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-top: 24px;
+    text-shadow: 0 0 5px rgba(234, 179, 8, 0.5);
+}
+
+.start-quest-btn:hover {
+    background: rgba(234, 179, 8, 0.2);
+    border-color: #fbbf24;
+    color: #fbbf24;
+    text-shadow: 0 0 8px rgba(251, 191, 36, 0.8);
+}
+
+.start-quest-btn:disabled {
+    background: transparent;
+    border-color: #555;
+    color: #555;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+    text-shadow: none;
+}
+
+/* Loading & Empty States */
+.loading,
+.no-quests {
+    text-align: center;
+    padding: 40px;
+    color: #888;
+    font-size: 13px;
+    font-family: 'Press Start 2P', monospace;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+}
+
+/* Scrollbar */
+.quest-list::-webkit-scrollbar,
+.quest-details::-webkit-scrollbar {
+    width: 12px;
+}
+
+.quest-list::-webkit-scrollbar-track,
+.quest-details::-webkit-scrollbar-track {
+    background: #000;
+    border-left: 1px solid #333;
+}
+
+.quest-list::-webkit-scrollbar-thumb,
+.quest-details::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, #eab308 0%, #ca8a04 100%);
+    border: 2px solid #000;
+    box-shadow: 0 0 10px rgba(234, 179, 8, 0.3);
+}
+
+.quest-list::-webkit-scrollbar-thumb:hover,
+.quest-details::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(180deg, #fbbf24 0%, #eab308 100%);
+    box-shadow: 0 0 15px rgba(234, 179, 8, 0.5);
+}
+
+/* Animations */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+/* Mobile Responsiveness */
+@media (max-width: 768px) {
+    .quest-log-overlay {
+        padding: 0;
+        align-items: stretch;
+    }
+
+    .quest-log-container {
+        width: 100%;
+        height: 100%;
+        max-width: 100%;
+        max-height: 100dvh;
+        border-radius: 0;
+        padding-bottom: env(safe-area-inset-bottom);
+    }
+
+    .quest-log-header h2 {
+        font-size: 18px;
+    }
+
+    .quest-log-tabs button {
+        font-size: 10px;
+        padding: 8px 12px;
+    }
+
+    .quest-log-filters button {
+        font-size: 9px;
+        padding: 6px 10px;
+    }
+
+    .quest-list {
+        padding: 12px;
+    }
+
+    .quest-info h4 {
+        font-size: 11px;
+    }
+
+    .quest-meta {
+        font-size: 9px;
+        gap: 8px;
+    }
+
+    .quest-icon {
+        font-size: 24px;
+    }
+
+    .quest-details-expanded h5,
+    .active-quest-details h5 {
+        font-size: 10px;
+    }
+
+    .start-quest-btn {
+        font-size: 11px;
+        padding: 12px;
+    }
+}
