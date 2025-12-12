@@ -3,14 +3,15 @@ import { createPortal } from 'react-dom';
 import { motion } from 'framer-motion';
 import { WalletContext } from '../../providers/WalletContext';
 import { ethers } from 'ethers';
-import { GOLD_CONTRACT_ABI } from '../../goldAbi';
+import { GOLD_CONTRACT_ABI } from '../../goldV7Abi';
 import { CLZD_ABI, CLZD_TOKEN_ADDRESS } from '../../clzdAbi';
 import { useModalClose } from '../../hooks/useModalClose';
 import { getContractAddress } from '../../config/contracts';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 interface GoldShopProps {
     onClose: () => void;
-    onPurchase: (goldAmount: number, turnBonus: number) => void;
+    onPurchase: (goldAmount: number, turnBonus: number, serverPlayer?: { gold: number; goldInBank: number; turnsRemaining: number; maxTurns: number }) => void;
     tokenId?: number;
 }
 
@@ -25,6 +26,7 @@ interface BonusInfo {
 
 const GoldShop: React.FC<GoldShopProps> = ({ onClose, onPurchase, tokenId }) => {
     const { account, signer, provider, currentChainId } = useContext(WalletContext);
+    const { t } = useLanguage();
     const [purchasing, setPurchasing] = useState(false);
     const [message, setMessage] = useState('');
     const [goldRate, setGoldRate] = useState<number>(100000);
@@ -70,13 +72,15 @@ const GoldShop: React.FC<GoldShopProps> = ({ onClose, onPurchase, tokenId }) => 
                 const rateNumber = Number(rate);
                 setGoldRate(rateNumber);
 
-                // Try to fetch CLZD rate (V4.1 - numerator/denominator)
+                // Fetch CLZD rate (V7 - uses getClzdRate() with numerator/denominator)
                 try {
                     const [numerator, denominator] = await goldContract.getClzdRate();
+                    // V7 formula: goldAmount = (clzdAmount * numerator) / (1e18 * denominator)
                     setClzdRateNumerator(numerator);
                     setClzdRateDenominator(denominator > 0n ? denominator : 1n);
-                } catch {
-                    // V3 contract or older, CLZD not available
+                } catch (err) {
+                    console.error('Failed to fetch CLZD rate:', err);
+                    // CLZD not available
                     setClzdRateNumerator(0n);
                     setClzdRateDenominator(1n);
                 }
@@ -169,22 +173,22 @@ const GoldShop: React.FC<GoldShopProps> = ({ onClose, onPurchase, tokenId }) => 
     // Purchase with BNB
     const purchaseWithBnb = async (pkg: typeof packagesWithGold[0]) => {
         if (!account || !signer || tokenId === undefined || tokenId === null) {
-            setMessage('❌ Please select a character first!');
+            setMessage(t.goldShop.selectCharacterFirst);
             return;
         }
 
         if (currentChainId !== 56) {
-            setMessage('⚠️ Please switch to BNB Mainnet to purchase gold.');
+            setMessage(t.goldShop.switchToMainnet);
             return;
         }
 
         setPurchasing(true);
-        setMessage('🔄 Processing purchase...');
+        setMessage(t.goldShop.processingPurchase);
 
         try {
             const contractAddress = getContractAddress(56, 'gold');
             if (!contractAddress) {
-                setMessage('❌ Gold contract not configured');
+                setMessage(t.goldShop.goldContractNotConfigured);
                 setPurchasing(false);
                 return;
             }
@@ -194,7 +198,7 @@ const GoldShop: React.FC<GoldShopProps> = ({ onClose, onPurchase, tokenId }) => 
                 value: ethers.parseEther(pkg.bnb)
             });
 
-            setMessage('⏳ Waiting for confirmation...');
+            setMessage(t.goldShop.waitingConfirmation);
             const receipt = await tx.wait();
 
             // Get gold amount from event
@@ -230,11 +234,12 @@ const GoldShop: React.FC<GoldShopProps> = ({ onClose, onPurchase, tokenId }) => 
             if (response.ok && data.success) {
                 const totalGoldReceived = data.goldAmount || actualGoldAmount;
                 const turnsReceived = data.turnsAwarded || pkg.turns;
-                setMessage(`✅ SUCCESS! You received ${totalGoldReceived.toLocaleString()} gold and ${turnsReceived} turns! 🎉`);
-                onPurchase(totalGoldReceived, turnsReceived);
+                setMessage(t.goldShop.successReceived.replace('{gold}', totalGoldReceived.toLocaleString()).replace('{turns}', String(turnsReceived)));
+                // 🔐 FIX: Pass server's authoritative player state to prevent sync-gold overwriting pending combat gold
+                onPurchase(totalGoldReceived, turnsReceived, data.player);
                 setTimeout(onClose, 2000);
             } else {
-                setMessage('❌ Failed to credit gold. Contact support with tx: ' + tx.hash);
+                setMessage(t.goldShop.failedContactSupport + tx.hash);
             }
         } catch (error: unknown) {
             console.error('Gold purchase error:', error);
@@ -243,19 +248,19 @@ const GoldShop: React.FC<GoldShopProps> = ({ onClose, onPurchase, tokenId }) => 
 
             // Parse specific error conditions
             if (errorLower.includes('insufficient') || errorLower.includes('exceeds balance')) {
-                setMessage(`💸 Insufficient BNB! You need ${pkg.bnb} BNB to complete this purchase.`);
+                setMessage(t.goldShop.insufficientBnb.replace('{amount}', pkg.bnb));
             } else if (errorLower.includes('user rejected') || errorLower.includes('user denied')) {
-                setMessage('❌ Transaction cancelled by user.');
+                setMessage(t.goldShop.transactionCancelled);
             } else if (errorLower.includes('not owner') || errorLower.includes('not the owner') || errorLower.includes('ownerof')) {
-                setMessage('❌ You do not own this character. Please select a character you own.');
+                setMessage(t.goldShop.notOwner);
             } else if (errorLower.includes('paused')) {
-                setMessage('❌ Gold shop is temporarily paused. Please try again later.');
+                setMessage(t.goldShop.shopPaused);
             } else if (errorLower.includes('invalid token') || errorLower.includes('nonexistent')) {
-                setMessage('❌ Invalid character. Please select a valid character.');
+                setMessage(t.goldShop.invalidCharacter);
             } else {
                 // Show truncated error for debugging
                 const shortError = errorMessage.length > 100 ? errorMessage.slice(0, 100) + '...' : errorMessage;
-                setMessage(`❌ Transaction failed: ${shortError}`);
+                setMessage(t.goldShop.transactionFailed.replace('{error}', shortError));
             }
         } finally {
             setPurchasing(false);
@@ -265,28 +270,28 @@ const GoldShop: React.FC<GoldShopProps> = ({ onClose, onPurchase, tokenId }) => 
     // Purchase with CLZD
     const purchaseWithClzd = async (pkg: typeof packagesWithGold[0]) => {
         if (!account || !signer || tokenId === undefined || tokenId === null) {
-            setMessage('❌ Please select a character first!');
+            setMessage(t.goldShop.selectCharacterFirst);
             return;
         }
 
         if (currentChainId !== 56) {
-            setMessage('⚠️ Please switch to BNB Mainnet to purchase gold.');
+            setMessage(t.goldShop.switchToMainnet);
             return;
         }
 
         if (clzdRateNumerator === 0n) {
-            setMessage('❌ CLZD payment not available yet. Please use BNB.');
+            setMessage(t.goldShop.clzdNotAvailable);
             return;
         }
 
         const clzdAmount = calculateClzdAmount(pkg);
         if (clzdAmount === 0n) {
-            setMessage('❌ Unable to calculate CLZD amount.');
+            setMessage(t.goldShop.unableCalculateClzd);
             return;
         }
 
         if (clzdBalance < clzdAmount) {
-            setMessage(`💸 Insufficient CLZD! You need ${formatClzd(clzdAmount)} CLZD.`);
+            setMessage(t.goldShop.insufficientClzd.replace('{amount}', formatClzd(clzdAmount)));
             return;
         }
 
@@ -295,7 +300,7 @@ const GoldShop: React.FC<GoldShopProps> = ({ onClose, onPurchase, tokenId }) => 
         try {
             const contractAddress = getContractAddress(56, 'gold');
             if (!contractAddress) {
-                setMessage('❌ Gold contract not configured');
+                setMessage(t.goldShop.goldContractNotConfigured);
                 setPurchasing(false);
                 return;
             }
@@ -308,7 +313,7 @@ const GoldShop: React.FC<GoldShopProps> = ({ onClose, onPurchase, tokenId }) => 
 
             if (allowance < clzdAmount) {
                 setApproving(true);
-                setMessage('🔓 Approving CLZD spending...');
+                setMessage(t.goldShop.approvingClzd);
 
                 const approveTx = await clzdContract.approve(contractAddress, clzdAmount);
                 await approveTx.wait();
@@ -316,11 +321,11 @@ const GoldShop: React.FC<GoldShopProps> = ({ onClose, onPurchase, tokenId }) => 
                 setApproving(false);
             }
 
-            setMessage('🔄 Processing CLZD purchase...');
+            setMessage(t.goldShop.processingClzdPurchase);
 
             const tx = await goldContract.purchaseGoldWithCLZD(tokenId, clzdAmount);
 
-            setMessage('⏳ Waiting for confirmation...');
+            setMessage(t.goldShop.waitingConfirmation);
             const receipt = await tx.wait();
 
             // Get gold amount from event
@@ -345,6 +350,7 @@ const GoldShop: React.FC<GoldShopProps> = ({ onClose, onPurchase, tokenId }) => 
                     walletAddress: account,
                     tokenId,
                     clzdAmount: clzdAmount.toString(),
+                    turnBonus: pkg.turns,
                     transactionHash: tx.hash
                 })
             });
@@ -352,11 +358,12 @@ const GoldShop: React.FC<GoldShopProps> = ({ onClose, onPurchase, tokenId }) => 
             const data = await response.json();
 
             if (response.ok && data.success) {
-                setMessage(`✅ SUCCESS! You received ${actualGoldAmount.toLocaleString()} gold! 🎉`);
-                onPurchase(actualGoldAmount, pkg.turns);
+                setMessage(t.goldShop.successReceivedClzd.replace('{gold}', actualGoldAmount.toLocaleString()));
+                // 🔐 FIX: Pass server's authoritative player state to prevent sync-gold overwriting pending combat gold
+                onPurchase(actualGoldAmount, pkg.turns, data.player);
                 setTimeout(onClose, 2000);
             } else {
-                setMessage('❌ Failed to credit gold. Contact support with tx: ' + tx.hash);
+                setMessage(t.goldShop.failedContactSupport + tx.hash);
             }
         } catch (error: unknown) {
             console.error('CLZD purchase error:', error);
@@ -365,21 +372,21 @@ const GoldShop: React.FC<GoldShopProps> = ({ onClose, onPurchase, tokenId }) => 
 
             // Parse specific error conditions
             if (errorLower.includes('insufficient') || errorLower.includes('exceeds balance') || errorLower.includes('transfer amount exceeds')) {
-                setMessage(`💸 Insufficient CLZD! You need ${formatClzd(calculateClzdAmount(pkg))} CLZD.`);
+                setMessage(t.goldShop.insufficientClzd.replace('{amount}', formatClzd(calculateClzdAmount(pkg))));
             } else if (errorLower.includes('user rejected') || errorLower.includes('user denied')) {
-                setMessage('❌ Transaction cancelled by user.');
+                setMessage(t.goldShop.transactionCancelled);
             } else if (errorLower.includes('not owner') || errorLower.includes('not the owner') || errorLower.includes('ownerof')) {
-                setMessage('❌ You do not own this character. Please select a character you own.');
+                setMessage(t.goldShop.notOwner);
             } else if (errorLower.includes('allowance') || errorLower.includes('approve')) {
-                setMessage('❌ CLZD approval failed. Please try again.');
+                setMessage(t.goldShop.clzdApprovalFailed);
             } else if (errorLower.includes('paused')) {
-                setMessage('❌ Gold shop is temporarily paused. Please try again later.');
+                setMessage(t.goldShop.shopPaused);
             } else if (errorLower.includes('invalid token') || errorLower.includes('nonexistent')) {
-                setMessage('❌ Invalid character. Please select a valid character.');
+                setMessage(t.goldShop.invalidCharacter);
             } else {
                 // Show truncated error for debugging
                 const shortError = errorMessage.length > 100 ? errorMessage.slice(0, 100) + '...' : errorMessage;
-                setMessage(`❌ Transaction failed: ${shortError}`);
+                setMessage(t.goldShop.transactionFailed.replace('{error}', shortError));
             }
         } finally {
             setPurchasing(false);
@@ -420,8 +427,8 @@ const GoldShop: React.FC<GoldShopProps> = ({ onClose, onPurchase, tokenId }) => 
             >
                 {/* Header */}
                 <div className="text-yellow-500 text-glow-gold mb-4 md:mb-6 text-center">
-                    <div className="text-xl md:text-2xl font-bold">🦎  CRIME LIZARD GOLD SHOP  💰</div>
-                    <div className="text-xs md:text-sm mt-2 text-gray-400">BUY GOLD • DOMINATE THE STREETS</div>
+                    <div className="text-xl md:text-2xl font-bold">{t.goldShop.title}</div>
+                    <div className="text-xs md:text-sm mt-2 text-gray-400">{t.goldShop.subtitle}</div>
                 </div>
 
                 {/* Payment Method Toggle */}
@@ -434,7 +441,7 @@ const GoldShop: React.FC<GoldShopProps> = ({ onClose, onPurchase, tokenId }) => 
                                 : 'bg-black border-gray-600 text-gray-400 hover:border-yellow-500'
                         }`}
                     >
-                        💰 BNB {!clzdAvailable ? '' : '(Best Value!)'}
+                        {t.goldShop.payBnb} {clzdAvailable && t.goldShop.bestValue}
                     </button>
                     <button
                         onClick={() => setPaymentMethod('clzd')}
@@ -447,7 +454,7 @@ const GoldShop: React.FC<GoldShopProps> = ({ onClose, onPurchase, tokenId }) => 
                                     : 'bg-black border-gray-800 text-gray-600 cursor-not-allowed'
                         }`}
                     >
-                        🦎 $CLZD {!clzdAvailable && '(Coming Soon)'}
+                        {t.goldShop.payClzd} {!clzdAvailable && t.goldShop.comingSoon}
                     </button>
                 </div>
 
@@ -455,7 +462,7 @@ const GoldShop: React.FC<GoldShopProps> = ({ onClose, onPurchase, tokenId }) => 
                 {paymentMethod === 'clzd' && clzdAvailable && (
                     <div className="bg-black border-2 border-purple-500 p-2 mb-3 text-center">
                         <span className="text-purple-400 text-sm">
-                            Your CLZD Balance: <span className="font-bold text-white">{formatClzd(clzdBalance)} CLZD</span>
+                            {t.goldShop.yourClzdBalance} <span className="font-bold text-white">{formatClzd(clzdBalance)} CLZD</span>
                         </span>
                     </div>
                 )}
@@ -463,11 +470,11 @@ const GoldShop: React.FC<GoldShopProps> = ({ onClose, onPurchase, tokenId }) => 
                 {/* Exchange Rate Display */}
                 <div className="bg-black border-2 border-cyan-500 p-2 md:p-3 mb-3 md:mb-4">
                     <div className="flex flex-col md:flex-row items-center justify-center gap-1 md:gap-2 text-xs md:text-sm">
-                        <span className="text-cyan-500 font-bold">📊 Exchange Rate:</span>
+                        <span className="text-cyan-500 font-bold">{t.goldShop.exchangeRate}</span>
                         {paymentMethod === 'bnb' ? (
-                            <span className="text-white font-bold">{goldRate.toLocaleString()} gold per 1 BNB</span>
+                            <span className="text-white font-bold">{t.goldShop.goldPerBnb.replace('{rate}', goldRate.toLocaleString())}</span>
                         ) : (
-                            <span className="text-white font-bold">{clzdGoldPer1M.toLocaleString()} gold per 1M CLZD</span>
+                            <span className="text-white font-bold">{t.goldShop.goldPerClzd.replace('{rate}', clzdGoldPer1M.toLocaleString())}</span>
                         )}
                     </div>
                 </div>
@@ -476,15 +483,15 @@ const GoldShop: React.FC<GoldShopProps> = ({ onClose, onPurchase, tokenId }) => 
                 {hasActiveBonus && (
                     <div className="bg-black border-2 border-[#00FF88] p-3 mb-4">
                         <div className="text-xs text-center">
-                            <span className="text-[#00FF88] font-bold">🎁 YOUR BONUSES: </span>
+                            <span className="text-[#00FF88] font-bold">{t.goldShop.yourBonuses} </span>
                             {bonusInfo.holderDiscountBnb > 0 && (
                                 <span className="text-yellow-500 mr-2">
-                                    {paymentMethod === 'bnb' ? bonusInfo.holderDiscountBnb : bonusInfo.holderDiscountClzd}% Holder Discount
+                                    {t.goldShop.holderDiscount.replace('{percent}', String(paymentMethod === 'bnb' ? bonusInfo.holderDiscountBnb : bonusInfo.holderDiscountClzd))}
                                 </span>
                             )}
                             {bonusInfo.stakingGoldBonus > 0 && (
                                 <span className="text-purple-400">
-                                    +{bonusInfo.stakingGoldBonus}% Staking Bonus
+                                    {t.goldShop.stakingBonus.replace('{percent}', String(bonusInfo.stakingGoldBonus))}
                                 </span>
                             )}
                         </div>
@@ -496,12 +503,9 @@ const GoldShop: React.FC<GoldShopProps> = ({ onClose, onPurchase, tokenId }) => 
                     <div className="flex items-start gap-2 md:gap-3">
                         <span className="text-xl md:text-2xl">🎁</span>
                         <div>
-                            <h3 className="font-bold text-[#00FF88] mb-1 text-xs md:text-sm">💎 Bonus Gold + Turns Included!</h3>
+                            <h3 className="font-bold text-[#00FF88] mb-1 text-xs md:text-sm">{t.goldShop.bonusGoldTitle}</h3>
                             <p className="text-xs text-gray-400">
-                                {paymentMethod === 'bnb'
-                                    ? 'Larger packages include bonus gold! Plus, support the game economy and weekly $CLZD rewards! 🚀'
-                                    : 'Pay with $CLZD to support the token! Hold more CLZD for discounts, stake for extra bonuses! 🦎'
-                                }
+                                {paymentMethod === 'bnb' ? t.goldShop.bonusGoldDescBnb : t.goldShop.bonusGoldDescClzd}
                             </p>
                         </div>
                     </div>
@@ -510,7 +514,7 @@ const GoldShop: React.FC<GoldShopProps> = ({ onClose, onPurchase, tokenId }) => 
                 {/* Loading State */}
                 {packages.length === 0 && (
                     <div className="text-center py-8 text-gray-400">
-                        <div className="animate-pulse">🔄 Loading packages...</div>
+                        <div className="animate-pulse">{t.goldShop.loadingPackages}</div>
                     </div>
                 )}
 
@@ -536,7 +540,7 @@ const GoldShop: React.FC<GoldShopProps> = ({ onClose, onPurchase, tokenId }) => 
                                         <div className={`absolute -top-2 md:-top-3 left-1/2 transform -translate-x-1/2 ${
                                             paymentMethod === 'bnb' ? 'bg-yellow-500' : 'bg-purple-500'
                                         } text-black px-2 md:px-3 py-0.5 md:py-1 text-[10px] md:text-xs font-bold`}>
-                                            ⭐ POPULAR
+                                            {t.goldShop.popular}
                                         </div>
                                     )}
 
@@ -547,7 +551,7 @@ const GoldShop: React.FC<GoldShopProps> = ({ onClose, onPurchase, tokenId }) => 
                                         }`}>
                                             {pkg.gold.toLocaleString()}
                                         </div>
-                                        <div className="text-[10px] md:text-xs text-gray-400 mb-1 md:mb-2">Gold Coins</div>
+                                        <div className="text-[10px] md:text-xs text-gray-400 mb-1 md:mb-2">{t.goldShop.goldCoins}</div>
 
                                         {pkg.bonus > 0 && (
                                             <div className="bg-[#00AA55] border border-[#00FF88] px-1 md:px-2 py-0.5 md:py-1 mb-1 md:mb-2">
@@ -589,8 +593,8 @@ const GoldShop: React.FC<GoldShopProps> = ({ onClose, onPurchase, tokenId }) => 
                                             {purchasing
                                                 ? approving ? '🔓...' : '⏳...'
                                                 : paymentMethod === 'clzd' && !canAffordClzd
-                                                    ? '❌ Low CLZD'
-                                                    : paymentMethod === 'bnb' ? '💰 BUY' : '🦎 BUY'
+                                                    ? t.goldShop.lowClzd
+                                                    : paymentMethod === 'bnb' ? `💰 ${t.goldShop.buy}` : `🦎 ${t.goldShop.buy}`
                                             }
                                         </button>
                                     </div>
@@ -622,14 +626,14 @@ const GoldShop: React.FC<GoldShopProps> = ({ onClose, onPurchase, tokenId }) => 
                     <div className="flex items-start gap-2 md:gap-3">
                         <span className="text-xl md:text-2xl">🏆</span>
                         <div className="text-xs">
-                            <h3 className="font-bold text-purple-500 mb-1 md:mb-2">📊 Weekly $CLZD Rewards!</h3>
+                            <h3 className="font-bold text-purple-500 mb-1 md:mb-2">{t.goldShop.weeklyRewardsTitle}</h3>
                             <p className="text-gray-400 mb-1 md:mb-2">
-                                Profits buy <span className="text-purple-500 font-bold">$CLZD memecoin</span> distributed to:
+                                {t.goldShop.weeklyRewardsDesc}
                             </p>
                             <ul className="text-gray-500 space-y-0.5 md:space-y-1">
-                                <li>🥇 <span className="text-yellow-500">Top Gold Stealer</span></li>
-                                <li>🥇 <span className="text-cyan-500">Highest Level</span></li>
-                                <li>💎 <span className="text-[#00FF88]">Both earn airdrop points!</span></li>
+                                <li><span className="text-yellow-500">{t.goldShop.topGoldStealer}</span></li>
+                                <li><span className="text-cyan-500">{t.goldShop.highestLevel}</span></li>
+                                <li><span className="text-[#00FF88]">{t.goldShop.bothEarnPoints}</span></li>
                             </ul>
                         </div>
                     </div>
@@ -637,14 +641,14 @@ const GoldShop: React.FC<GoldShopProps> = ({ onClose, onPurchase, tokenId }) => 
 
                 {/* Footer & Close */}
                 <div className="text-center text-[10px] md:text-xs text-gray-500 mb-3 md:mb-4">
-                    🔐 Secure • 💰 Instant • 📊 Revenue supports weekly rewards
+                    {t.goldShop.secureInstant}
                 </div>
 
                 <button
                     onClick={onClose}
                     className="w-full py-2 md:py-3 bg-black border-2 border-gray-600 text-gray-400 hover:bg-black hover:border-[#00FF88] hover:text-[#00FF88] font-bold text-sm md:text-base transition-all"
                 >
-                    [ESC] Close
+                    {t.goldShop.escClose}
                 </button>
             </motion.div>
         </motion.div>

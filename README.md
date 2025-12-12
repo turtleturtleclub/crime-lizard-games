@@ -31,10 +31,11 @@ All contracts are deployed and verified on **BNB Smart Chain Mainnet (Chain ID: 
 | Contract | Address | BSCScan |
 |----------|---------|---------|
 | Character NFT | `0x1d6F35Ba896005beB35e7776E408A3fAf42B92D0` | [View](https://bscscan.com/address/0x1d6F35Ba896005beB35e7776E408A3fAf42B92D0) |
-| Gold Token | `0x70C90e46C97086bE5c788618cE7Ad67f22EA6a3E` | [View](https://bscscan.com/address/0x70C90e46C97086bE5c788618cE7Ad67f22EA6a3E) |
-| Dice Game | `0x71eddE644B160CB95aB89e53d8F758c1E548a505` | [View](https://bscscan.com/address/0x71eddE644B160CB95aB89e53d8F758c1E548a505) |
-| Slots Game | `0xDA408551780187263f584115985F96AAAA96721F` | [View](https://bscscan.com/address/0xDA408551780187263f584115985F96AAAA96721F) |
+| Gold Token (V6) | `0x5712B0032b78Cd84621f779f0C04f415d2399646` | [View](https://bscscan.com/address/0x5712B0032b78Cd84621f779f0C04f415d2399646) |
+| Dice Game (V7) | `0x1385A045A3fD5A1602e44DB0068c31Af850f9335` | [View](https://bscscan.com/address/0x1385A045A3fD5A1602e44DB0068c31Af850f9335) |
+| Slots Game (V11) | `0x5f8eA3e8a093F5B3Ec77C3C4437B151789c2AAB6` | [View](https://bscscan.com/address/0x5f8eA3e8a093F5B3Ec77C3C4437B151789c2AAB6) |
 | Predictions | `0x472F1f89c6226a5682DEe4b9948D3200acC50aEe` | [View](https://bscscan.com/address/0x472F1f89c6226a5682DEe4b9948D3200acC50aEe) |
+| CLZD Token | `0xc782cdde2f1c78f056f21f32e470353d44df707d` | [View](https://bscscan.com/address/0xc782cdde2f1c78f056f21f32e470353d44df707d) |
 
 ## Features
 
@@ -99,7 +100,7 @@ VITE_BSC_MAINNET_WS=wss://bsc.publicnode.com
 
 # Contract Addresses (BSC Mainnet)
 VITE_CHARACTER_MAINNET=0x1d6F35Ba896005beB35e7776E408A3fAf42B92D0
-VITE_GOLD_MAINNET=0x70C90e46C97086bE5c788618cE7Ad67f22EA6a3E
+VITE_GOLD_MAINNET=0x5712B0032b78Cd84621f779f0C04f415d2399646
 # ... see .env.example for full list
 ```
 

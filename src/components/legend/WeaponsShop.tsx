@@ -19,6 +19,15 @@ const WeaponsShop: React.FC<WeaponsShopProps> = ({ player, updatePlayer, onClose
     const { refreshQuests } = useQuests();
     const weaponsList = Object.values(WEAPONS);
 
+    // Helper to get translated weapon name/description
+    const getWeaponText = (weapon: Weapon, field: 'name' | 'description') => {
+        const weaponTranslations = (t as any).weapons;
+        if (weaponTranslations && weaponTranslations[weapon.id]) {
+            return weaponTranslations[weapon.id][field] || weapon[field];
+        }
+        return weapon[field];
+    };
+
     // Handle ESC key and mobile back button
     useModalClose(onClose);
 
@@ -51,7 +60,7 @@ const response = await fetch('/api/legend/sync-to-blockchain', {
         // Validate player data first
         if (!player.walletAddress || player.tokenId === undefined || player.tokenId === null) {
             console.error('❌ Missing player data:', { walletAddress: player.walletAddress, tokenId: player.tokenId });
-            setGameMessage('⚠️ Error: Missing player data. Please refresh the page and try again.');
+            setGameMessage(`⚠️ ${t.goblinHoard.missingPlayerData}`);
             return;
         }
 
@@ -70,13 +79,13 @@ const response = await fetch('/api/legend/sync-to-blockchain', {
         const alreadyOwned = currentInventory.some(item => item.id === weapon.id && item.itemType === 'weapon');
 
         if (alreadyOwned) {
-            setGameMessage('⚠️ You already own this weapon! Check your inventory to equip it.');
+            setGameMessage(`⚠️ ${t.goblinHoard.alreadyOwnWeapon}`);
             return;
         }
 
         // Check inventory space
         if (currentInventory.length >= player.maxInventorySlots) {
-            setGameMessage('⚠️ Your inventory is full! Sell or use some items first.');
+            setGameMessage(`⚠️ ${t.goblinHoard.inventoryFull}`);
             return;
         }
 
@@ -119,13 +128,13 @@ const response = await fetch('/api/legend/shop/buy-equipment', {
 
             // Refresh quests to check for quest completion (e.g., "Dress for Success")
             await refreshQuests();
-setGameMessage(`✅ ${weapon.name} added to your inventory! Open your Character Profile to equip it.`);
+            setGameMessage(`✅ ${t.weaponsShop.purchaseSuccess.replace('{name}', getWeaponText(weapon, 'name'))}`);
 
             // Close shop after successful purchase
             setTimeout(() => onClose(), 2000);
         } catch (error) {
             console.error('Purchase error:', error);
-            setGameMessage(`❌ Failed to purchase weapon: ${error instanceof Error ? error.message : 'Unknown error'}`);
+            setGameMessage(`❌ ${t.weaponsShop.purchaseFailed.replace('{error}', error instanceof Error ? error.message : 'Unknown error')}`);
         }
     };
 
@@ -172,9 +181,9 @@ setGameMessage(`✅ ${weapon.name} added to your inventory! Open your Character 
                         <div className="flex justify-between items-center">
                             <div>
                                 <div className={`font-bold ${getRarityColor(player.weapon.rarity)}`}>
-                                    {player.weapon.name}
+                                    {getWeaponText(player.weapon, 'name')}
                                 </div>
-                                <div className="text-sm text-gray-400">{player.weapon.description}</div>
+                                <div className="text-sm text-gray-400">{getWeaponText(player.weapon, 'description')}</div>
                             </div>
                             <div className="text-right">
                                 <div className="text-red-400 font-bold">+{player.weapon.attackBonus} ATK</div>
@@ -209,17 +218,17 @@ setGameMessage(`✅ ${weapon.name} added to your inventory! Open your Character 
                                 <div className="flex justify-between items-start mb-2">
                                     <div>
                                         <div className={`font-bold ${getRarityColor(weapon.rarity)}`}>
-                                            {weapon.name}
+                                            {getWeaponText(weapon, 'name')}
                                         </div>
-                                        <div className="text-xs text-gray-400">Level {weapon.minLevel}+</div>
+                                        <div className="text-xs text-gray-400">{t.weaponsShop.levelRequired.replace('{level}', String(weapon.minLevel))}</div>
                                     </div>
                                     <div className="text-right">
                                         <div className="text-red-400 font-bold">+{weapon.attackBonus}</div>
-                                        <div className="text-xs text-gray-400">ATK</div>
+                                        <div className="text-xs text-gray-400">{t.weaponsShop.atk}</div>
                                     </div>
                                 </div>
 
-                                <p className="text-sm text-gray-300 mb-3">{weapon.description}</p>
+                                <p className="text-sm text-gray-300 mb-3">{getWeaponText(weapon, 'description')}</p>
 
                                 <div className="flex justify-between items-center">
                                     <div className="text-yellow-500 font-bold">{weapon.price} 💰</div>
@@ -229,7 +238,7 @@ setGameMessage(`✅ ${weapon.name} added to your inventory! Open your Character 
                                         </div>
                                     ) : isOwned ? (
                                         <div className="px-3 py-1 bg-blue-900 border border-blue-500 text-blue-500 text-sm font-bold">
-                                            OWNED
+                                            {t.weaponsShop.owned}
                                         </div>
                                     ) : (
                                         <button
@@ -260,7 +269,7 @@ setGameMessage(`✅ ${weapon.name} added to your inventory! Open your Character 
                     onClick={onClose}
                     className="w-full py-3 bg-black border-2 border-gray-600 text-gray-400 hover:bg-black font-bold"
                 >
-                    [ESC] Close
+                    {t.weaponsShop.escClose}
                 </button>
             </motion.div>
         </motion.div>

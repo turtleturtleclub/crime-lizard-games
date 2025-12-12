@@ -12,6 +12,7 @@ import { useCharacter } from '../contexts/CharacterContext';
 import { useLegendGame } from '../contexts/LegendGameContext';
 import { RewardsModal } from './RewardsPage';
 import HowToPlay from './HowToPlay';
+import { Twitter, Send, Mail, DollarSign, Volume2, VolumeX, AlertTriangle, User, Crown, Menu } from 'lucide-react';
 
 interface EnhancedHeaderProps {
     soundEnabled?: boolean;
@@ -369,88 +370,72 @@ function EnhancedHeader({ soundEnabled = true, setSoundEnabled, soundSystemReady
                         </motion.div>
 
                         {/* Right - Actions */}
-                        <div className="flex items-center space-x-2">
+                        <div className="flex items-center gap-1">
                             {/* Desktop Actions */}
-                            <div className="hidden md:flex items-center space-x-2">
-                                {/* X/Twitter */}
-                                <motion.a
+                            <div className="hidden md:flex items-center gap-1">
+                                {/* Social Icons Group - using inline styles to guarantee sizing */}
+                                <a
                                     href="https://x.com/CrimeLizardBNB"
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="w-10 h-10 flex-shrink-0 flex items-center justify-center bg-black border-2 border-[#00FF88] rounded-none hover:bg-[#00FF88] transition-all group"
-                                    whileHover={{ scale: 1.05 }}
-                                    whileTap={{ scale: 0.95 }}
+                                    className="flex items-center justify-center bg-black border border-[#00FF88] hover:bg-[#00FF88] transition-all group"
+                                    style={{ width: '32px', height: '32px' }}
                                     title={t.header.followX}
                                 >
-                                    <svg className="w-5 h-5 fill-[#00FF88] group-hover:fill-black transition-colors" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                        <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
-                                    </svg>
-                                </motion.a>
-
-                                {/* Telegram */}
-                                <motion.a
+                                    <Twitter size={16} className="text-[#00FF88] group-hover:text-black" />
+                                </a>
+                                <a
                                     href="https://t.me/crimelizard"
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="w-10 h-10 flex-shrink-0 flex items-center justify-center bg-black border-2 border-[#00FF88] rounded-none hover:bg-[#00FF88] transition-all group"
-                                    whileHover={{ scale: 1.05 }}
-                                    whileTap={{ scale: 0.95 }}
+                                    className="flex items-center justify-center bg-black border border-[#00FF88] hover:bg-[#00FF88] transition-all group"
+                                    style={{ width: '32px', height: '32px' }}
                                     title={t.header.joinTelegram}
                                 >
-                                    <svg className="w-5 h-5 fill-[#00FF88] group-hover:fill-black transition-colors" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69a.2.2 0 00-.05-.18c-.06-.05-.14-.03-.21-.02-.09.02-1.49.95-4.22 2.79-.4.27-.76.41-1.08.4-.36-.01-1.04-.2-1.55-.37-.63-.2-1.12-.31-1.08-.66.02-.18.27-.36.74-.55 2.92-1.27 4.86-2.11 5.83-2.51 2.78-1.16 3.35-1.36 3.73-1.36.08 0 .27.02.39.12.1.08.13.19.14.27-.01.06.01.24 0 .38z"/>
-                                    </svg>
-                                </motion.a>
-
-                                {/* Support Email */}
-                                <motion.a
+                                    <Send size={16} className="text-[#00FF88] group-hover:text-black" />
+                                </a>
+                                <a
                                     href="mailto:dev@crimelizard.tech"
-                                    className="w-10 h-10 flex-shrink-0 flex items-center justify-center bg-black border-2 border-[#00FF88] rounded-none hover:bg-[#00FF88] transition-all group"
-                                    whileHover={{ scale: 1.05 }}
-                                    whileTap={{ scale: 0.95 }}
+                                    className="flex items-center justify-center bg-black border border-[#00FF88] hover:bg-[#00FF88] transition-all group"
+                                    style={{ width: '32px', height: '32px' }}
                                     title={t.header.contactSupport}
                                 >
-                                    <svg className="w-5 h-5 fill-[#00FF88] group-hover:fill-black transition-colors" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                        <path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/>
-                                    </svg>
-                                </motion.a>
+                                    <Mail size={16} className="text-[#00FF88] group-hover:text-black" />
+                                </a>
 
                                 {/* Buy Token Dropdown */}
                                 <div className="relative">
-                                    <motion.button
+                                    <button
                                         onClick={() => setShowBuyDropdown(!showBuyDropdown)}
-                                        className="w-10 h-10 flex-shrink-0 flex items-center justify-center bg-black border-2 border-[#00FF88] rounded-none hover:bg-[#00FF88] transition-all group"
-                                        whileHover={{ scale: 1.05 }}
-                                        whileTap={{ scale: 0.95 }}
+                                        className="header-btn flex items-center justify-center bg-black border border-[#00FF88] hover:bg-[#00FF88] transition-all group"
+                                        style={{ width: '32px', height: '32px' }}
                                         title={t.header.buyToken}
                                     >
-                                        <svg className="w-5 h-5 fill-[#00FF88] group-hover:fill-black transition-colors" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm.89-8.9c1.78-.59 2.64-1.37 2.64-2.54 0-1.5-1.3-2.56-3.26-2.56-1.65 0-3.03.88-3.38 2.24l1.58.66c.26-.81.95-1.28 1.8-1.28.85 0 1.33.43 1.33 1.03 0 .64-.56 1.02-1.96 1.5-1.71.59-2.64 1.41-2.64 2.77 0 1.48 1.39 2.66 3.36 2.66 1.64 0 2.86-.73 3.32-1.93l-1.6-.72c-.35.73-.91 1.12-1.72 1.12-.76 0-1.35-.38-1.35-1.03 0-.6.46-.98 1.88-1.42z"/>
-                                        </svg>
-                                    </motion.button>
+                                        <DollarSign size={16} className="text-[#00FF88] group-hover:text-black" />
+                                    </button>
                                     {showBuyDropdown && (
                                         <>
                                             <div className="fixed inset-0" onClick={() => setShowBuyDropdown(false)} style={{ zIndex: 49 }} />
-                                            <div className="absolute right-0 top-12 bg-black border-2 border-[#00FF88] min-w-[180px]" style={{ zIndex: 50 }}>
+                                            <div className="absolute right-0 bg-black border border-[#00FF88] min-w-[160px]" style={{ zIndex: 50, top: '28px' }}>
                                                 <a
                                                     href="https://app.openocean.finance/swap/bsc/BNB/CLZD"
                                                     target="_blank"
                                                     rel="noopener noreferrer"
-                                                    className="flex items-center gap-3 px-4 py-3 text-[#00FF88] hover:bg-[#00FF88] hover:text-black transition-all"
+                                                    className="flex items-center gap-2 px-3 py-2 text-[#00FF88] hover:bg-[#00FF88] hover:text-black transition-all text-xs"
                                                     onClick={() => setShowBuyDropdown(false)}
                                                 >
-                                                    <img src="/assets/openocean.png" alt="OpenOcean" className="w-5 h-5" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
-                                                    <span className="font-bold text-sm">OpenOcean</span>
+                                                    <img src="/assets/openocean.png" alt="OpenOcean" className="w-4 h-4" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                                                    <span className="font-bold">OpenOcean</span>
                                                 </a>
                                                 <a
                                                     href="https://pancakeswap.finance/swap?chain=bsc&inputCurrency=BNB&outputCurrency=0xa5996Fc5007dD2019F9a9Ff6c50c1c847Aa64444"
                                                     target="_blank"
                                                     rel="noopener noreferrer"
-                                                    className="flex items-center gap-3 px-4 py-3 text-[#00FF88] hover:bg-[#00FF88] hover:text-black transition-all border-t border-[#00FF88]/30"
+                                                    className="flex items-center gap-2 px-3 py-2 text-[#00FF88] hover:bg-[#00FF88] hover:text-black transition-all border-t border-[#00FF88]/30 text-xs"
                                                     onClick={() => setShowBuyDropdown(false)}
                                                 >
-                                                    <img src="/assets/pancakeswap.png" alt="PancakeSwap" className="w-5 h-5" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
-                                                    <span className="font-bold text-sm">PancakeSwap</span>
+                                                    <img src="/assets/pancakeswap.png" alt="PancakeSwap" className="w-4 h-4" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                                                    <span className="font-bold">PancakeSwap</span>
                                                 </a>
                                             </div>
                                         </>
@@ -458,137 +443,103 @@ function EnhancedHeader({ soundEnabled = true, setSoundEnabled, soundSystemReady
                                 </div>
 
                                 {/* Language Selector */}
-                                <div className="h-10 min-w-[4.5rem] flex-shrink-0 bg-black border-2 border-[#00FF88] rounded-none overflow-hidden flex items-center">
-                                    <select
-                                        value={language}
-                                        onChange={(e) => setLanguage(e.target.value as Language)}
-                                        className="h-full w-full bg-black text-[#00FF88] px-3 text-sm cursor-pointer outline-none appearance-none pr-7 font-bold"
-                                        style={{
-                                            backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%2300FF88' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3E%3C/svg%3E")`,
-                                            backgroundPosition: 'right 0.25rem center',
-                                            backgroundRepeat: 'no-repeat',
-                                            backgroundSize: '1.25em 1.25em',
-                                        }}
-                                        title={t.common.language}
-                                    >
-                                        <option value="en" className="bg-black text-[#00FF88]">EN</option>
-                                        <option value="zh" className="bg-black text-[#00FF88]">中文</option>
-                                    </select>
-                                </div>
+                                <select
+                                    value={language}
+                                    onChange={(e) => setLanguage(e.target.value as Language)}
+                                    className="bg-black text-[#00FF88] text-xs cursor-pointer outline-none border border-[#00FF88] font-bold px-2"
+                                    style={{ height: '32px' }}
+                                    title={t.common.language}
+                                >
+                                    <option value="en" className="bg-black">EN</option>
+                                    <option value="zh" className="bg-black">中文</option>
+                                </select>
 
                                 {/* Sound Toggle */}
-                                <motion.button
+                                <button
                                     onClick={toggleSound}
-                                    className={`w-10 h-10 flex-shrink-0 flex items-center justify-center border-2 rounded-none transition-all group ${actualSoundEnabled && soundSystemReady
+                                    className={`header-btn flex items-center justify-center border transition-all group ${actualSoundEnabled && soundSystemReady
                                         ? 'bg-black border-[#00FF88] hover:bg-[#00FF88]'
                                         : actualSoundEnabled && !soundSystemReady
                                             ? 'bg-black border-yellow-500 hover:bg-yellow-500'
                                             : 'bg-black border-gray-500 hover:bg-gray-600'
                                         }`}
-                                    whileHover={{ scale: 1.05 }}
-                                    whileTap={{ scale: 0.95 }}
+                                    style={{ width: '32px', height: '32px' }}
                                     title={t.header.toggleSound}
                                 >
                                     {actualSoundEnabled && soundSystemReady ? (
-                                        <svg className="w-5 h-5 fill-[#00FF88] group-hover:fill-black transition-colors" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                            <path d="M3 10v4h3l4 4V6L6 10H3zm11 2c0-1.1-.6-2-1.5-2.5v5c.9-.5 1.5-1.4 1.5-2.5zm-1.5-6v1.3c1.5.5 2.5 1.8 2.5 3.2s-1 2.7-2.5 3.2v1.3c2.2-.6 3.5-2.5 3.5-4.5s-1.3-3.9-3.5-4.5z"/>
-                                        </svg>
+                                        <Volume2 size={16} className="text-[#00FF88] group-hover:text-black" />
                                     ) : actualSoundEnabled && !soundSystemReady ? (
-                                        <svg className="w-5 h-5 fill-yellow-500 group-hover:fill-black transition-colors" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                            <path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/>
-                                        </svg>
+                                        <AlertTriangle size={16} className="text-yellow-500 group-hover:text-black" />
                                     ) : (
-                                        <svg className="w-5 h-5 fill-gray-500 group-hover:fill-white transition-colors" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                            <path d="M3 10v4h3l4 4V6L6 10H3zm13.5 2.5l-1.4-1.4 2-2 1.4 1.4-2 2zm2-2l-1.4-1.4 2-2 1.4 1.4-2 2zm-4 4l1.4 1.4-2 2-1.4-1.4 2-2zm4 0l1.4 1.4-2 2-1.4-1.4 2-2z"/>
-                                        </svg>
+                                        <VolumeX size={16} className="text-gray-500 group-hover:text-white" />
                                     )}
-                                </motion.button>
+                                </button>
 
-                                {/* Character selection moved to Profile tab */}
-
-                                {/* Network Indicator - BSC Mainnet only */}
-                                <div className="h-10 min-w-[4rem] flex-shrink-0 bg-black border-2 border-[#00FF88] rounded-none overflow-hidden flex items-center justify-center px-3">
-                                    <div className={`w-2 h-2 rounded-none ${currentChainId === 56 ? 'bg-green-400' : 'bg-yellow-400'} mr-2`} />
+                                {/* Network Indicator */}
+                                <div className="px-2 flex items-center bg-black border border-[#00FF88]" style={{ height: '32px' }}>
+                                    <div className={`w-1.5 h-1.5 ${currentChainId === 56 ? 'bg-green-400' : 'bg-yellow-400'} mr-1`} />
                                     <span className="text-[#00FF88] text-xs font-bold">BNB</span>
                                 </div>
 
                                 {/* Wallet Connection */}
                                 {!account ? (
-                                    <motion.button
+                                    <button
                                         onClick={handleWalletConnect}
-                                        className="h-10 flex-shrink-0 flex items-center gap-2 px-3 bg-black border-2 border-[#00FF88] rounded-none text-[#00FF88] hover:bg-[#00FF88] hover:text-black transition-all whitespace-nowrap"
-                                        whileHover={{ scale: 1.05 }}
-                                        whileTap={{ scale: 0.95 }}
+                                        className="header-btn px-2 flex items-center gap-1 bg-black border border-[#00FF88] text-[#00FF88] hover:bg-[#00FF88] hover:text-black transition-all"
+                                        style={{ height: '32px' }}
                                     >
-                                        <span className="text-base leading-none">🔗</span>
-                                        <span className="text-sm font-bold">{t.wallet.connect}</span>
-                                    </motion.button>
+                                        <span className="text-xs">🔗</span>
+                                        <span className="text-xs font-bold">{t.wallet.connect}</span>
+                                    </button>
                                 ) : (
-                                    <div className="flex items-center space-x-2">
+                                    <div className="flex items-center gap-1">
                                         {/* Profile Button */}
-                                        <motion.button
+                                        <button
                                             onClick={() => setShowProfileModal(true)}
-                                            className="w-10 h-10 flex-shrink-0 flex items-center justify-center bg-black border-2 border-[#00FF88] rounded-none hover:bg-[#00FF88] transition-all group"
-                                            whileHover={{ scale: 1.05 }}
-                                            whileTap={{ scale: 0.95 }}
+                                            className="header-btn flex items-center justify-center bg-black border border-[#00FF88] hover:bg-[#00FF88] transition-all group"
+                                            style={{ width: '32px', height: '32px' }}
                                             title={t.wallet.profile}
                                         >
-                                            <svg className="w-5 h-5 fill-[#00FF88] group-hover:fill-black transition-colors" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                                <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
-                                            </svg>
-                                        </motion.button>
+                                            <User size={16} className="text-[#00FF88] group-hover:text-black" />
+                                        </button>
 
                                         {/* Admin Button */}
                                         {isAdmin(account) && (
-                                            <motion.button
+                                            <button
                                                 onClick={(e) => {
                                                     e.stopPropagation();
                                                     navigate('/admin');
                                                 }}
-                                                className="w-10 h-10 flex-shrink-0 flex items-center justify-center bg-black border-2 border-yellow-500 rounded-none hover:bg-yellow-500 transition-all group"
-                                                whileHover={{ scale: 1.05 }}
-                                                whileTap={{ scale: 0.95 }}
+                                                className="header-btn flex items-center justify-center bg-black border border-yellow-500 hover:bg-yellow-500 transition-all group"
+                                                style={{ width: '32px', height: '32px' }}
                                                 title={t.wallet.admin}
                                             >
-                                                <svg className="w-5 h-5 fill-yellow-500 group-hover:fill-black transition-colors" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                                    <path d="M5 16L3 5l5.5 5L12 4l3.5 6L21 5l-2 11H5zm14 3c0 .6-.4 1-1 1H6c-.6 0-1-.4-1-1v-1h14v1z"/>
-                                                </svg>
-                                            </motion.button>
+                                                <Crown size={16} className="text-yellow-500 group-hover:text-black" />
+                                            </button>
                                         )}
 
-                                        {/* Wallet Address / Disconnect Button */}
-                                        <motion.button
+                                        {/* Wallet Address / Disconnect */}
+                                        <button
                                             onClick={handleWalletDisconnect}
-                                            className="h-10 flex-shrink-0 flex items-center gap-2 px-3 bg-black border-2 border-[#00FF88] rounded-none text-[#00FF88] hover:bg-[#00FF88] hover:text-black transition-all whitespace-nowrap"
-                                            whileHover={{ scale: 1.05 }}
-                                            whileTap={{ scale: 0.95 }}
+                                            className="header-btn px-2 flex items-center gap-1 bg-black border border-[#00FF88] text-[#00FF88] hover:bg-[#00FF88] hover:text-black transition-all"
+                                            style={{ height: '32px' }}
                                         >
-                                            <div className={`w-2 h-2 rounded-none ${currentChainId === 56 ? 'bg-green-400' : 'bg-yellow-400'}`} />
-                                            <span className="text-xs font-bold">
-                                                {account.slice(0, 6)}...{account.slice(-4)}
-                                            </span>
-                                            <span className="font-bold">×</span>
-                                        </motion.button>
+                                            <div className={`w-1.5 h-1.5 ${currentChainId === 56 ? 'bg-green-400' : 'bg-yellow-400'}`} />
+                                            <span className="text-xs font-bold">{account.slice(0, 4)}...{account.slice(-3)}</span>
+                                            <span className="text-xs">×</span>
+                                        </button>
                                     </div>
                                 )}
                             </div>
 
                             {/* Mobile Menu Button */}
-                            <motion.button
+                            <button
                                 onClick={() => setShowMobileMenu(true)}
-                                className="md:hidden w-10 h-10 flex-shrink-0 text-[#00FF88] bg-black hover:bg-[#00FF88] hover:text-black border-2 border-[#00FF88] rounded-none transition-all flex items-center justify-center"
-                                whileHover={{ scale: 1.05 }}
-                                whileTap={{ scale: 0.95 }}
+                                className="header-btn md:hidden flex items-center justify-center bg-black border border-[#00FF88] hover:bg-[#00FF88] transition-all group"
+                                style={{ width: '32px', height: '32px' }}
                             >
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        strokeWidth={2}
-                                        d="M4 6h16M4 12h16M4 18h16"
-                                    />
-                                </svg>
-                            </motion.button>
+                                <Menu size={16} className="text-[#00FF88] group-hover:text-black" />
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -948,9 +899,7 @@ function EnhancedHeader({ soundEnabled = true, setSoundEnabled, soundSystemReady
                                     whileHover={{ scale: 1.02 }}
                                     whileTap={{ scale: 0.98 }}
                                 >
-                                    <svg className="w-5 h-5 fill-[#00FF88] group-hover:fill-black transition-colors flex-shrink-0" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                        <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
-                                    </svg>
+                                    <Twitter size={20} className="text-[#00FF88] group-hover:text-black transition-colors flex-shrink-0" />
                                     <span className="font-bold">{t.header.followX}</span>
                                 </motion.a>
 
@@ -962,9 +911,7 @@ function EnhancedHeader({ soundEnabled = true, setSoundEnabled, soundSystemReady
                                     whileHover={{ scale: 1.02 }}
                                     whileTap={{ scale: 0.98 }}
                                 >
-                                    <svg className="w-5 h-5 fill-[#00FF88] group-hover:fill-black transition-colors flex-shrink-0" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69a.2.2 0 00-.05-.18c-.06-.05-.14-.03-.21-.02-.09.02-1.49.95-4.22 2.79-.4.27-.76.41-1.08.4-.36-.01-1.04-.2-1.55-.37-.63-.2-1.12-.31-1.08-.66.02-.18.27-.36.74-.55 2.92-1.27 4.86-2.11 5.83-2.51 2.78-1.16 3.35-1.36 3.73-1.36.08 0 .27.02.39.12.1.08.13.19.14.27-.01.06.01.24 0 .38z"/>
-                                    </svg>
+                                    <Send size={20} className="text-[#00FF88] group-hover:text-black transition-colors flex-shrink-0" />
                                     <span className="font-bold">{t.header.joinTelegram}</span>
                                 </motion.a>
 
@@ -974,9 +921,7 @@ function EnhancedHeader({ soundEnabled = true, setSoundEnabled, soundSystemReady
                                     whileHover={{ scale: 1.02 }}
                                     whileTap={{ scale: 0.98 }}
                                 >
-                                    <svg className="w-5 h-5 fill-[#00FF88] group-hover:fill-black transition-colors flex-shrink-0" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                        <path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/>
-                                    </svg>
+                                    <Mail size={20} className="text-[#00FF88] group-hover:text-black transition-colors flex-shrink-0" />
                                     <span className="font-bold">{t.header.contactSupport}</span>
                                 </motion.a>
 

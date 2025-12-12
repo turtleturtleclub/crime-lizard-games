@@ -17,6 +17,7 @@ export interface PlayerCharacter {
     level: number;
     experience: number;
     experienceToNextLevel: number;
+    totalGameXP?: number; // Total XP earned across all gameplay (for leaderboards)
 
     // NFT Metadata
     ipfsImageHash?: string; // IPFS hash for character image

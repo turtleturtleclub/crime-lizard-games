@@ -13,8 +13,9 @@ import { useGameFAI } from './GameAI';
 import { ethers } from 'ethers';
 import { Howl } from 'howler';
 import { getNetworkConfig } from '../config/contracts';
-import { DICE_V5_ABI } from '../diceV5Abi';
-const DICE_ABI = DICE_V5_ABI;
+import { DICE_V7_ABI } from '../diceV7Abi';
+import { useLanguage } from '../contexts/LanguageContext';
+const DICE_ABI = DICE_V7_ABI;
 import '../App.css';
 
 // Dice Contract Type
@@ -23,8 +24,8 @@ type CrimeLizardDice = ethers.BaseContract & {
     selectCharacter(tokenId: bigint): Promise<ethers.TransactionResponse>;
     getActiveCharacter(player: string): Promise<bigint>;
 
-    // Game functions
-    roll(betAmount: bigint, userRandomNumber: string, overrides?: ethers.Overrides): Promise<ethers.TransactionResponse>;
+    // Game functions - DiceV7 with server-signed randomness
+    roll(betAmount: bigint, randomSeed: bigint, nonce: string, signature: string, overrides?: ethers.Overrides): Promise<ethers.TransactionResponse>;
     getPlayerStats(address: string): Promise<any>;
     getDiceName(total: bigint): Promise<string>;
     getPayoutForTotal(total: bigint): Promise<bigint>;
@@ -192,11 +193,12 @@ interface DiceGameProps {
 }
 
 const DiceGame: React.FC<DiceGameProps> = ({ onClose }) => {
-const navigate = useNavigate();
+    const navigate = useNavigate();
     const isNavigatingRef = useRef(false);
     const { account, connectWallet, provider, currentChainId } = useContext(WalletContext);
     const { selectedCharacter, refreshGoldBalance } = useCharacter();
     const { notifyGameEvent } = useGameFAI();
+    const { t } = useLanguage();
 
     // Database gold balance (source of truth)
     const [databaseGold, setDatabaseGold] = useState<number>(0);
@@ -485,50 +487,65 @@ isNavigatingRef.current = true;
      * Roll dice with on-chain randomness
      */
     const rollDice = useCallback(async () => {
+        console.log('🎲 Dice: rollDice called');
+
         if (gameState.isRolling || isProcessingTx) {
+            console.log('🎲 Dice: Already rolling or processing, returning');
             return;
         }
 
         if (!account) {
+            console.log('🎲 Dice: No account connected');
             connectWallet();
             toast.error('Please connect your wallet first!');
             return;
         }
 
         if (!selectedCharacter) {
+            console.log('🎲 Dice: No character selected');
             toast.error('Please select a character first!');
             return;
         }
 
         if (!contract || !provider) {
+            console.log('🎲 Dice: Contract or provider missing', { contract: !!contract, provider: !!provider });
             toast.error('Dice contract not initialized. Please refresh the page.');
             return;
         }
 
         // Verify user is on mainnet before any roll
         if (currentChainId !== 56) {
+            console.log('🎲 Dice: Wrong chain', currentChainId);
             toast.error('Please switch to BNB Mainnet to play!');
             return;
         }
 
+        console.log('🎲 Dice: Selecting character on contract...');
         // Ensure character is selected on the Dice contract (will prompt wallet if needed)
         const characterSelected = await selectCharacterOnContract();
         if (!characterSelected) {
+            console.log('🎲 Dice: Character selection failed');
             return;
         }
+        console.log('🎲 Dice: Character selected successfully');
 
         const betAmountNum = parseFloat(betAmountRef.current);
+        console.log('🎲 Dice: Bet amount:', betAmountNum, 'Database gold:', databaseGold);
+
         if (betAmountNum <= 0) {
+            console.log('🎲 Dice: Bet amount <= 0');
             toast.error('Bet amount must be greater than 0!');
             return;
         }
 
         if (betAmountNum > databaseGold) {
+            console.log('🎲 Dice: Insufficient gold');
             toast.error('Insufficient gold balance!');
             return;
         }
 
         try {
+            console.log('🎲 Dice: Starting transaction process...');
             setIsProcessingTx(true);
             setGameState(prev => ({
                 ...prev,
@@ -538,13 +555,35 @@ isNavigatingRef.current = true;
             }));
 
             // Get signer
+            console.log('🎲 Dice: Getting signer...');
             const signer = await provider.getSigner();
             const contractWithSigner = contract.connect(signer) as CrimeLizardDice;
 
-            // Generate user randomness
-            const userRandomNumber = ethers.hexlify(ethers.randomBytes(32));
             const betAmountGold = BigInt(betAmountNum);
 
+            // Request server-signed randomness
+            console.log('🎲 Dice: Requesting signed randomness...');
+            toast.info('🔐 Requesting secure randomness...', { autoClose: 2000 });
+
+            const signatureResponse = await fetch('/api/legend/dice-signature', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    playerAddress: account,
+                    characterId: Number(selectedCharacter.tokenId),
+                    betAmount: betAmountNum
+                })
+            });
+
+            if (!signatureResponse.ok) {
+                const errorData = await signatureResponse.json().catch(() => ({}));
+                throw new Error(errorData.error || 'Failed to get signed randomness from server');
+            }
+
+            const signedData = await signatureResponse.json();
+            if (!signedData.success || !signedData.randomSeed || !signedData.nonce || !signedData.signature) {
+                throw new Error('Invalid signature response from server');
+            }
 
             // Notify AI (convert BigInt to string for JSON serialization)
             notifyGameEventRef.current({
@@ -579,8 +618,14 @@ isNavigatingRef.current = true;
 
             toast.info('🎲 Rolling dice...', { autoClose: 2000 });
 
-            // Send blockchain transaction
-            const tx = await contractWithSigner.roll(betAmountGold, userRandomNumber, { gasLimit: 1000000 });
+            // Send blockchain transaction with server-signed randomness
+            const tx = await contractWithSigner.roll(
+                betAmountGold,
+                BigInt(signedData.randomSeed),
+                signedData.nonce,
+                signedData.signature,
+                { gasLimit: 1000000 }
+            );
             toast.info('⏳ Processing transaction...', { autoClose: 2000 });
 
             const receipt = await tx.wait();
@@ -895,19 +940,19 @@ return;
                     className="text-center p-8 border-2 border-[#FFD700] bg-black font-bbs"
                     onClick={(e) => e.stopPropagation()}
                 >
-                    <h2 className="text-4xl mb-4 text-[#FFD700] text-glow-gold">🎲 Crime Lizard Dice 🎲</h2>
-                    <p className="text-xl mb-6 text-white">Connect your wallet to start rolling!</p>
+                    <h2 className="text-4xl mb-4 text-[#FFD700] text-glow-gold">🎲 {t.dice.title} 🎲</h2>
+                    <p className="text-xl mb-6 text-white">{t.dice.connectWallet}</p>
                     <button
                         onClick={() => connectWallet()}
                         className="px-8 py-4 bg-[#00AA55] border-2 border-[#00FF88] text-[#00FF88] font-bold hover:bg-[#00BB66] transition-all"
                     >
-                        Connect Wallet
+                        {t.dice.connectWalletBtn}
                     </button>
                     <button
                         onClick={handleClose}
                         className="ml-4 px-8 py-4 bg-black border-2 border-gray-700 text-gray-400 hover:border-[#00FF88] hover:text-[#00FF88] font-bold transition-all"
                     >
-                        Close
+                        {t.dice.close}
                     </button>
                 </motion.div>
             </motion.div>
@@ -930,14 +975,14 @@ return;
                     className="text-center p-8 border-2 border-[#FFD700] bg-black font-bbs"
                     onClick={(e) => e.stopPropagation()}
                 >
-                    <h2 className="text-4xl mb-4 text-[#FFD700] text-glow-gold">🎲 Crime Lizard Dice 🎲</h2>
-                    <p className="text-xl mb-6 text-white">Please select a character to play!</p>
-                    <p className="text-gray-400 mb-6">Use the character selector in the header above</p>
+                    <h2 className="text-4xl mb-4 text-[#FFD700] text-glow-gold">🎲 {t.dice.title} 🎲</h2>
+                    <p className="text-xl mb-6 text-white">{t.dice.selectCharacter}</p>
+                    <p className="text-gray-400 mb-6">{t.dice.useHeaderSelector}</p>
                     <button
                         onClick={handleClose}
                         className="px-8 py-4 bg-black border-2 border-gray-700 text-gray-400 hover:border-[#00FF88] hover:text-[#00FF88] font-bold transition-all"
                     >
-                        Close
+                        {t.dice.close}
                     </button>
                 </motion.div>
             </motion.div>
@@ -982,11 +1027,11 @@ return;
                     className="text-center mb-4 md:mb-8"
                 >
                     <h1 className="text-3xl md:text-6xl font-bold mb-1 md:mb-2 text-glow-gold">
-                        🎲 CRIME LIZARD DICE 🎲
+                        🎲 {t.dice.title} 🎲
                     </h1>
-                    <p className="text-gray-400 text-sm md:text-lg">Roll the bones, win big or lose it all</p>
+                    <p className="text-gray-400 text-sm md:text-lg">{t.dice.subtitle}</p>
                     <p className="text-xs text-gray-400 mt-1 md:mt-2 hidden md:block">
-                        On-chain randomness • <strong className="text-yellow-400">~92% RTP</strong> • Every roll pays something!
+                        {t.dice.rtp}
                     </p>
                 </motion.div>
 
@@ -1031,7 +1076,7 @@ return;
                     {/* Left: Dice Display */}
                     <div className="lg:col-span-1">
                         <div className="border-2 border-[#00FF88] p-4 md:p-6 bg-black">
-                            <h3 className="text-xl md:text-2xl text-center mb-3 md:mb-4 text-[#00FF88] text-glow-green">The Dice</h3>
+                            <h3 className="text-xl md:text-2xl text-center mb-3 md:mb-4 text-[#00FF88] text-glow-green">{t.dice.theDice}</h3>
                             <div className="flex justify-center gap-4 mb-6">
                                 <motion.div
                                     animate={{
@@ -1071,41 +1116,41 @@ return;
                                         {PAYTABLE_FULL.find(p => p.total === gameState.total)?.emoji} {PAYTABLE_FULL.find(p => p.total === gameState.total)?.name}
                                     </div>
                                     <div className="text-2xl text-green-400">
-                                        {gameState.multiplier}x Multiplier!
+                                        {t.dice.multiplier.replace('{multiplier}', gameState.multiplier.toString())}
                                     </div>
                                     <div className="text-3xl text-yellow-300 font-bold mt-2">
-                                        +{gameState.winAmount.toLocaleString()} GOLD
+                                        {t.dice.plusGold.replace('{amount}', gameState.winAmount.toLocaleString())}
                                     </div>
                                 </motion.div>
                             )}
 
                             <div className="text-center">
                                 <div className="text-5xl font-bold text-white mb-2">
-                                    Total: {gameState.total}
+                                    {t.dice.total.replace('{amount}', gameState.total.toString())}
                                 </div>
                             </div>
                         </div>
 
                         {/* Session Stats */}
                         <div className="border-2 border-[#00FF88] p-4 bg-black mt-4">
-                            <h3 className="text-xl text-[#00FF88] mb-3">Session Stats</h3>
+                            <h3 className="text-xl text-[#00FF88] mb-3">{t.dice.sessionStats}</h3>
                             <div className="space-y-2 text-sm">
                                 <div className="flex justify-between">
-                                    <span className="text-gray-400">Rolls:</span>
+                                    <span className="text-gray-400">{t.dice.rolls}</span>
                                     <span className="text-white">{gameState.sessionStats.rolls}</span>
                                 </div>
                                 <div className="flex justify-between">
-                                    <span className="text-gray-400">Wins:</span>
+                                    <span className="text-gray-400">{t.dice.wins}</span>
                                     <span className="text-[#00FF88]">{gameState.sessionStats.wins}</span>
                                 </div>
                                 <div className="flex justify-between">
-                                    <span className="text-gray-400">Win Rate:</span>
+                                    <span className="text-gray-400">{t.dice.winRate}</span>
                                     <span className="text-[#FFD700]">{winRate}%</span>
                                 </div>
                                 <div className="flex justify-between">
-                                    <span className="text-gray-400">Net Profit:</span>
+                                    <span className="text-gray-400">{t.dice.netProfit}</span>
                                     <span className={netProfit >= 0 ? 'text-[#00FF88]' : 'text-red-400'}>
-                                        {netProfit >= 0 ? '+' : ''}{netProfit.toFixed(0)} GOLD
+                                        {netProfit >= 0 ? '+' : ''}{netProfit.toFixed(0)} {t.dice.gold}
                                     </span>
                                 </div>
                             </div>
@@ -1115,10 +1160,10 @@ return;
                     {/* Center: Betting Controls */}
                     <div className="lg:col-span-1">
                         <div className="border-2 border-[#FFD700] p-6 bg-black">
-                            <h3 className="text-2xl text-center mb-4 text-[#FFD700] text-glow-gold">Place Your Bet</h3>
+                            <h3 className="text-2xl text-center mb-4 text-[#FFD700] text-glow-gold">{t.dice.placeYourBet}</h3>
 
                             <div className="mb-4">
-                                <label className="block text-sm text-gray-400 mb-2">Gold Balance</label>
+                                <label className="block text-sm text-gray-400 mb-2">{t.dice.goldBalance}</label>
                                 <div className="flex items-center justify-between gap-2">
                                     <div className="text-2xl font-bold text-[#FFD700]">
                                         💰 {databaseGold.toLocaleString()}
@@ -1130,13 +1175,13 @@ return;
                                         }}
                                         className="px-4 py-2 bg-[#00AA55] border-2 border-[#00FF88] text-[#00FF88] hover:bg-[#00BB66] font-bold text-sm transition-all"
                                     >
-                                        💰 BUY GOLD
+                                        💰 {t.dice.buyGold}
                                     </button>
                                 </div>
                             </div>
 
                             <div className="mb-4">
-                                <label className="block text-sm text-gray-400 mb-2">Bet Amount</label>
+                                <label className="block text-sm text-gray-400 mb-2">{t.dice.betAmount}</label>
                                 <input
                                     type="number"
                                     value={gameState.betAmount}
@@ -1157,14 +1202,14 @@ return;
                                     disabled={gameState.isRolling || isProcessingTx}
                                     className="px-3 py-2 bg-black border border-gray-700 hover:border-[#00FF88] text-sm disabled:opacity-50 text-white"
                                 >
-                                    1/2
+                                    {t.dice.half}
                                 </button>
                                 <button
                                     onClick={() => quickBet(2)}
                                     disabled={gameState.isRolling || isProcessingTx}
                                     className="px-3 py-2 bg-black border border-gray-700 hover:border-[#00FF88] text-sm disabled:opacity-50 text-white"
                                 >
-                                    2x
+                                    {t.dice.double}
                                 </button>
                                 <button
                                     onClick={() => {
@@ -1175,7 +1220,7 @@ return;
                                     disabled={gameState.isRolling || isProcessingTx}
                                     className="px-3 py-2 bg-black border border-gray-700 hover:border-[#FFD700] text-sm disabled:opacity-50 text-white"
                                 >
-                                    MAX
+                                    {t.dice.maxBet}
                                 </button>
                                 <button
                                     onClick={() => {
@@ -1185,7 +1230,7 @@ return;
                                     disabled={gameState.isRolling || isProcessingTx}
                                     className="px-3 py-2 bg-black border border-gray-700 hover:border-[#FFD700] text-sm disabled:opacity-50 text-white"
                                 >
-                                    RESET
+                                    {t.dice.reset}
                                 </button>
                             </div>
 
@@ -1212,12 +1257,12 @@ return;
                                     zIndex: 10
                                 }}
                             >
-                                {isProcessingTx ? '⏳ PROCESSING...' : gameState.isRolling ? '🎲 ROLLING...' : '🎲 ROLL DICE'}
+                                {isProcessingTx ? `⏳ ${t.dice.processing}...` : gameState.isRolling ? `🎲 ${t.dice.rolling}...` : `🎲 ${t.dice.rollDice}`}
                             </button>
 
                             <div className="mt-4 p-3 bg-black border border-gray-700 text-sm text-gray-400">
-                                <p>💡 <strong>Tip:</strong> Every roll pays! Chase 2 or 12 for 3x, avoid 7 (most common, only 0.5x)!</p>
-                                <p className="text-xs text-[#FFD700] mt-2">~92% RTP - Play for the big wins!</p>
+                                <p>💡 <strong>Tip:</strong> {t.dice.everyRollPays}</p>
+                                <p className="text-xs text-[#FFD700] mt-2">{t.dice.rtpNote}</p>
                             </div>
                         </div>
                     </div>
@@ -1225,7 +1270,7 @@ return;
                     {/* Right: Paytable */}
                     <div className="lg:col-span-1">
                         <div className="border-2 border-[#FFD700] bg-black p-4 md:p-6">
-                            <h3 className="text-xl md:text-2xl text-center mb-3 md:mb-4 text-[#FFD700] text-glow-gold">All Payouts</h3>
+                            <h3 className="text-xl md:text-2xl text-center mb-3 md:mb-4 text-[#FFD700] text-glow-gold">{t.dice.allPayouts}</h3>
                             <div className="space-y-2 max-h-[500px] md:max-h-[500px] overflow-y-auto">
                                 {PAYTABLE_FULL.map((entry) => (
                                     <div
@@ -1278,7 +1323,7 @@ return;
                 {/* Recent Results */}
                 {gameState.lastResults.length > 0 && (
                     <div className="border-2 border-gray-700 p-6 bg-black">
-                        <h3 className="text-2xl mb-4 text-white">Recent Rolls</h3>
+                        <h3 className="text-2xl mb-4 text-white">{t.dice.recentRolls}</h3>
                         <div className="grid grid-cols-2 md:grid-cols-5 lg:grid-cols-10 gap-2">
                             {gameState.lastResults.map((result, i) => (
                                 <motion.div
@@ -1305,7 +1350,7 @@ return;
                     disabled={gameState.isRolling || isProcessingTx}
                     className="w-full px-4 py-3 bg-black border-2 border-gray-700 text-gray-400 hover:border-[#00FF88] hover:text-[#00FF88] font-bold disabled:opacity-50 disabled:cursor-not-allowed mt-8 transition-all"
                 >
-                    {(gameState.isRolling || isProcessingTx) ? 'Wait for roll to finish...' : '[ESC] Leave Dice Game'}
+                    {(gameState.isRolling || isProcessingTx) ? t.dice.waitForRoll : t.dice.escLeave}
                 </button>
                 </div>
             </motion.div>

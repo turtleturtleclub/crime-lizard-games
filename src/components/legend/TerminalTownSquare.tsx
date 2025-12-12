@@ -689,37 +689,19 @@ const TerminalTownSquare: React.FC<TerminalTownSquareProps> = ({
                 {showGoldShop && (
                     <GoldShop
                         onClose={() => setShowGoldShop(false)}
-                        onPurchase={async (gold, turns) => {
-                            // Sync from blockchain after purchase to get real on-chain balance
-                            try {
-                                const response = await fetch('/api/legend/sync-gold', {
-                                    method: 'POST',
-                                    headers: { 'Content-Type': 'application/json' },
-                                    body: JSON.stringify({
-                                        walletAddress: player.walletAddress,
-                                        tokenId: Number(player.tokenId)
-                                    })
+                        onPurchase={async (gold, turns, serverPlayer) => {
+                            // 🔐 FIX: Use server's authoritative player state instead of calling sync-gold
+                            // This prevents race condition where sync-gold would overwrite pending combat gold
+                            if (serverPlayer) {
+                                // Server returned authoritative state - use it directly
+                                updatePlayer({
+                                    gold: serverPlayer.gold,
+                                    goldInBank: serverPlayer.goldInBank,
+                                    turnsRemaining: serverPlayer.turnsRemaining,
+                                    maxTurns: serverPlayer.maxTurns
                                 });
-
-                                if (response.ok) {
-                                    const data = await response.json();
-                                    updatePlayer({
-                                        gold: data.goldOnHand,
-                                        goldInBank: data.goldInBank,
-                                        turnsRemaining: player.turnsRemaining + turns,
-                                        maxTurns: player.maxTurns + turns
-                                    });
-                                } else {
-                                    // Fallback if sync fails
-                                    updatePlayer({
-                                        gold: player.gold + gold,
-                                        turnsRemaining: player.turnsRemaining + turns,
-                                        maxTurns: player.maxTurns + turns
-                                    });
-                                }
-                            } catch (error) {
-                                console.error('Failed to sync after purchase:', error);
-                                // Fallback
+                            } else {
+                                // Fallback if server didn't return player state (shouldn't happen)
                                 updatePlayer({
                                     gold: player.gold + gold,
                                     turnsRemaining: player.turnsRemaining + turns,

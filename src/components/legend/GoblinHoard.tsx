@@ -494,36 +494,19 @@ const response = await fetch('/api/legend/bank/withdraw', {
         }
     };
 
-    const handlePurchaseComplete = async (goldAmount: number, turnBonus: number) => {
-        // Sync from blockchain after BNB purchase to get real on-chain balance
-        // (The purchase mints gold on-chain, so we need to fetch the actual balance)
-        try {
-            const response = await fetch('/api/legend/sync-gold', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    walletAddress: player.walletAddress,
-                    tokenId: Number(player.tokenId)
-                })
+    const handlePurchaseComplete = async (goldAmount: number, turnBonus: number, serverPlayer?: { gold: number; goldInBank: number; turnsRemaining: number; maxTurns: number }) => {
+        // 🔐 FIX: Use server's authoritative player state instead of calling sync-gold
+        // This prevents race condition where sync-gold would overwrite pending combat gold
+        if (serverPlayer) {
+            // Server returned authoritative state - use it directly
+            updatePlayer({
+                gold: serverPlayer.gold,
+                goldInBank: serverPlayer.goldInBank,
+                turnsRemaining: serverPlayer.turnsRemaining,
+                maxTurns: serverPlayer.maxTurns
             });
-
-            if (response.ok) {
-                const data = await response.json();
-                updatePlayer({
-                    gold: data.goldOnHand,
-                    goldInBank: data.goldInBank,
-                    turnsRemaining: player.turnsRemaining + turnBonus
-                });
-            } else {
-                // Fallback if sync fails
-                updatePlayer({
-                    gold: player.gold + goldAmount,
-                    turnsRemaining: player.turnsRemaining + turnBonus
-                });
-            }
-        } catch (error) {
-            console.error('Failed to sync after purchase:', error);
-            // Fallback
+        } else {
+            // Fallback if server didn't return player state (shouldn't happen)
             updatePlayer({
                 gold: player.gold + goldAmount,
                 turnsRemaining: player.turnsRemaining + turnBonus

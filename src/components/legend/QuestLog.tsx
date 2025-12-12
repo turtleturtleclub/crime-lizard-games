@@ -9,6 +9,7 @@ import type { EnhancedQuest } from '../../types/quest.types';
 import QuestPathChoice from './QuestPathChoice';
 import { getItemDisplayName } from '../../utils/itemNames';
 import { useModalClose } from '../../hooks/useModalClose';
+import { useLanguage } from '../../contexts/LanguageContext';
 import '../../styles/QuestLog.css';
 
 interface QuestLogProps {
@@ -18,6 +19,7 @@ interface QuestLogProps {
 export const QuestLog: React.FC<QuestLogProps> = ({ onClose }) => {
     // Handle ESC key, mobile back button, and keyboard dismissal
     useModalClose(onClose);
+    const { t } = useLanguage();
 
     const { availableQuests, activeQuests, completedQuestIds, getQuest, startQuest, updateQuestProgress, loading } = useQuests();
     const { selectedCharacter: character } = useCharacter();
@@ -108,7 +110,7 @@ await updateQuestProgress(pathChoiceQuest.id, 'path_choice', 1);
                 <div className="quest-log-container">
                 {/* Header */}
                 <div className="quest-log-header">
-                    <h2>📜 Quest Log</h2>
+                    <h2>{t.questLog.title}</h2>
                     <button onClick={onClose} className="close-btn">✕</button>
                 </div>
 
@@ -118,19 +120,19 @@ await updateQuestProgress(pathChoiceQuest.id, 'path_choice', 1);
                         className={selectedTab === 'available' ? 'active' : ''}
                         onClick={() => setSelectedTab('available')}
                     >
-                        Available ({availableQuests.length})
+                        {t.questLog.available.replace('{count}', availableQuests.length.toString())}
                     </button>
                     <button
                         className={selectedTab === 'active' ? 'active' : ''}
                         onClick={() => setSelectedTab('active')}
                     >
-                        Active ({activeQuests.length})
+                        {t.questLog.active.replace('{count}', activeQuests.length.toString())}
                     </button>
                     <button
                         className={selectedTab === 'completed' ? 'active' : ''}
                         onClick={() => setSelectedTab('completed')}
                     >
-                        Completed ({completedQuestIds.length})
+                        {t.questLog.completed.replace('{count}', completedQuestIds.length.toString())}
                     </button>
                 </div>
 
@@ -141,31 +143,31 @@ await updateQuestProgress(pathChoiceQuest.id, 'path_choice', 1);
                             className={filter === 'all' ? 'active' : ''}
                             onClick={() => setFilter('all')}
                         >
-                            All
+                            {t.questLog.filterAll}
                         </button>
                         <button
                             className={filter === 'story' ? 'active' : ''}
                             onClick={() => setFilter('story')}
                         >
-                            Story
+                            {t.questLog.filterStory}
                         </button>
                         <button
                             className={filter === 'side' ? 'active' : ''}
                             onClick={() => setFilter('side')}
                         >
-                            Side
+                            {t.questLog.filterSide}
                         </button>
                         <button
                             className={filter === 'daily' ? 'active' : ''}
                             onClick={() => setFilter('daily')}
                         >
-                            Daily
+                            {t.questLog.filterDaily}
                         </button>
                         <button
                             className={filter === 'heist' ? 'active' : ''}
                             onClick={() => setFilter('heist')}
                         >
-                            Heist
+                            {t.questLog.filterHeist}
                         </button>
                     </div>
                 )}
@@ -175,9 +177,9 @@ await updateQuestProgress(pathChoiceQuest.id, 'path_choice', 1);
                     <div className="quest-list">
                         {selectedTab === 'available' && (
                             loading ? (
-                                <div className="loading">Loading quests...</div>
+                                <div className="loading">{t.questLog.loading}</div>
                             ) : filteredQuests.length === 0 ? (
-                                <div className="no-quests">No available quests</div>
+                                <div className="no-quests">{t.questLog.noAvailable}</div>
                             ) : (
                                 filteredQuests.map(quest => (
                                     <AvailableQuestItem
@@ -185,6 +187,7 @@ await updateQuestProgress(pathChoiceQuest.id, 'path_choice', 1);
                                         quest={quest}
                                         onStart={() => handleStartQuest(quest.id)}
                                         canStart={!!character}
+                                        t={t}
                                     />
                                 ))
                             )
@@ -192,12 +195,13 @@ await updateQuestProgress(pathChoiceQuest.id, 'path_choice', 1);
 
                         {selectedTab === 'active' && (
                             activeQuests.length === 0 ? (
-                                <div className="no-quests">No active quests</div>
+                                <div className="no-quests">{t.questLog.noActive}</div>
                             ) : (
                                 activeQuests.map(aq => (
                                     <ActiveQuestItem
                                         key={aq.questId}
                                         activeQuest={aq}
+                                        t={t}
                                     />
                                 ))
                             )
@@ -206,7 +210,7 @@ await updateQuestProgress(pathChoiceQuest.id, 'path_choice', 1);
                         {selectedTab === 'completed' && (
                             <>
                                 {completedQuestIds.length === 0 ? (
-                                    <div className="no-quests">No completed quests yet.</div>
+                                    <div className="no-quests">{t.questLog.noCompleted}</div>
                                 ) : (
                                     <div className="quests-grid">
                                         {completedQuestIds.map(questId => {
@@ -226,7 +230,7 @@ if (!quest) {
                                                     </div>
                                                     <p className="quest-description">{quest.description}</p>
                                                     <div className="quest-rewards-preview">
-                                                        <h5>Rewards Claimed:</h5>
+                                                        <h5>{t.questLog.rewardsClaimed}</h5>
                                                         <div className="rewards-list">
                                                             {quest.rewards.gold && <span>💰 {quest.rewards.gold}g</span>}
                                                             {quest.rewards.experience && <span>⭐ {quest.rewards.experience} XP</span>}
@@ -265,9 +269,10 @@ interface AvailableQuestItemProps {
     quest: EnhancedQuest;
     onStart: () => void;
     canStart: boolean;
+    t: any;
 }
 
-const AvailableQuestItem: React.FC<AvailableQuestItemProps> = ({ quest, onStart, canStart }) => {
+const AvailableQuestItem: React.FC<AvailableQuestItemProps> = ({ quest, onStart, canStart, t }) => {
     const [expanded, setExpanded] = React.useState(false);
 
     const difficultyColors: Record<string, string> = {
@@ -296,12 +301,15 @@ const AvailableQuestItem: React.FC<AvailableQuestItemProps> = ({ quest, onStart,
                     <div className="quest-info">
                         <h4>{quest.title}</h4>
                         <div className="quest-meta">
-                            <span className="quest-level">Level {quest.requirements.minLevel || 1}+</span>
+                            <span className="quest-level">{t.questLog.levelRequired.replace('{level}', String(quest.requirements.minLevel || 1))}</span>
                             <span
                                 className="quest-difficulty"
                                 style={{ color: difficultyColors[quest.difficulty] }}
                             >
-                                {quest.difficulty.toUpperCase()}
+                                {quest.difficulty === 'easy' ? t.questLog.difficultyEasy :
+                                 quest.difficulty === 'medium' ? t.questLog.difficultyMedium :
+                                 quest.difficulty === 'hard' ? t.questLog.difficultyHard :
+                                 t.questLog.difficultyLegendary}
                             </span>
                             {quest.requirements.team && (
                                 <span className="quest-team">👥 {quest.requirements.team.minPlayers}-{quest.requirements.team.maxPlayers}</span>
@@ -323,17 +331,17 @@ const AvailableQuestItem: React.FC<AvailableQuestItemProps> = ({ quest, onStart,
                     )}
 
                     <div className="quest-requirements">
-                        <h5>Requirements</h5>
+                        <h5>{t.questLog.requirements}</h5>
                         <ul>
                             {quest.requirements.minLevel && (
-                                <li>Level {quest.requirements.minLevel}+</li>
+                                <li>{t.questLog.levelRequired.replace('{level}', String(quest.requirements.minLevel))}</li>
                             )}
                             {quest.requirements.gold && (
-                                <li>💰 {quest.requirements.gold} gold (entry fee)</li>
+                                <li>💰 {quest.requirements.gold} {t.questLog.gold} {t.questLog.entryFee}</li>
                             )}
                             {quest.requirements.team && (
                                 <li>
-                                    👥 {quest.requirements.team.minPlayers}-{quest.requirements.team.maxPlayers} players
+                                    👥 {quest.requirements.team.minPlayers}-{quest.requirements.team.maxPlayers} {t.questLog.players}
                                     {quest.requirements.team.requiredRoles && (
                                         <span> ({quest.requirements.team.requiredRoles.join(', ')})</span>
                                     )}
@@ -343,7 +351,7 @@ const AvailableQuestItem: React.FC<AvailableQuestItemProps> = ({ quest, onStart,
                     </div>
 
                     <div className="quest-objectives">
-                        <h5>Objectives</h5>
+                        <h5>{t.questLog.objectives}</h5>
                         <ul>
                             {quest.objectives.map((obj) => (
                                 <li key={obj.id}>
@@ -354,7 +362,7 @@ const AvailableQuestItem: React.FC<AvailableQuestItemProps> = ({ quest, onStart,
                     </div>
 
                     <div className="quest-rewards">
-                        <h5>Rewards</h5>
+                        <h5>{t.questLog.rewards}</h5>
                         <div className="rewards-list">
                             {quest.rewards.gold && <span>💰 {quest.rewards.gold}g</span>}
                             {quest.rewards.experience && <span>⭐ {quest.rewards.experience} XP</span>}
@@ -373,16 +381,16 @@ const AvailableQuestItem: React.FC<AvailableQuestItemProps> = ({ quest, onStart,
 
                     {quest.failureConsequences && (
                         <div className="quest-failure">
-                            <h5>⚠️ Failure Consequences</h5>
+                            <h5>{t.questLog.failureConsequences}</h5>
                             <ul>
                                 {quest.failureConsequences.goldLoss && (
-                                    <li>-{quest.failureConsequences.goldLoss} gold</li>
+                                    <li>-{quest.failureConsequences.goldLoss} {t.questLog.gold}</li>
                                 )}
                                 {quest.failureConsequences.reputationLoss && (
-                                    <li>-{quest.failureConsequences.reputationLoss} reputation</li>
+                                    <li>-{quest.failureConsequences.reputationLoss} {t.questLog.reputation}</li>
                                 )}
                                 {quest.failureConsequences.jail && (
-                                    <li>Jail: {quest.failureConsequences.jail.duration} hours</li>
+                                    <li>{t.questLog.jail} {quest.failureConsequences.jail.duration} {t.questLog.hours}</li>
                                 )}
                             </ul>
                         </div>
@@ -396,7 +404,7 @@ const AvailableQuestItem: React.FC<AvailableQuestItemProps> = ({ quest, onStart,
                         }}
                         disabled={!canStart}
                     >
-                        {!canStart ? '🔒 Requirements Not Met' : 'Start Quest'}
+                        {!canStart ? t.questLog.requirementsNotMet : t.questLog.startQuest}
                     </button>
                 </div>
             )}
@@ -407,9 +415,10 @@ const AvailableQuestItem: React.FC<AvailableQuestItemProps> = ({ quest, onStart,
 // Active Quest Item Component
 interface ActiveQuestItemProps {
     activeQuest: any; // ActiveQuestState
+    t: any;
 }
 
-const ActiveQuestItem: React.FC<ActiveQuestItemProps> = ({ activeQuest }) => {
+const ActiveQuestItem: React.FC<ActiveQuestItemProps> = ({ activeQuest, t }) => {
     const { getQuest } = useQuests();
     const [expanded, setExpanded] = React.useState(false);
 
@@ -441,7 +450,7 @@ const ActiveQuestItem: React.FC<ActiveQuestItemProps> = ({ activeQuest }) => {
                         style={{ width: `${percentage}%` }}
                     />
                 </div>
-                <div className="progress-text">{progress}/{total} objectives completed</div>
+                <div className="progress-text">{t.questLog.objectivesCompleted.replace('{progress}', String(progress)).replace('{total}', String(total))}</div>
             </div>
 
             {expanded && questData && (
@@ -449,7 +458,7 @@ const ActiveQuestItem: React.FC<ActiveQuestItemProps> = ({ activeQuest }) => {
                     <p className="quest-description">{questData.description}</p>
 
                     <div className="quest-objectives-progress">
-                        <h5>Objectives:</h5>
+                        <h5>{t.questLog.objectivesLabel}</h5>
                         <ul>
                             {questData.objectives.map((obj) => {
                                 const objectiveProgress = activeQuest.objectives?.find((o: any) => o.objectiveId === obj.id);
@@ -474,7 +483,7 @@ const ActiveQuestItem: React.FC<ActiveQuestItemProps> = ({ activeQuest }) => {
                     </div>
 
                     <div className="quest-rewards-preview">
-                        <h5>Rewards:</h5>
+                        <h5>{t.questLog.rewardsLabel}</h5>
                         <div className="rewards-list">
                             {questData.rewards.gold && <span>💰 {questData.rewards.gold}g</span>}
                             {questData.rewards.experience && <span>⭐ {questData.rewards.experience} XP</span>}
@@ -489,7 +498,7 @@ const ActiveQuestItem: React.FC<ActiveQuestItemProps> = ({ activeQuest }) => {
 
                     {activeQuest.expiresAt && (
                         <div className="quest-expiry">
-                            ⏰ Expires: {new Date(activeQuest.expiresAt).toLocaleString()}
+                            ⏰ {t.questLog.expires} {new Date(activeQuest.expiresAt).toLocaleString()}
                         </div>
                     )}
                 </div>

@@ -518,6 +518,7 @@ export interface BossMechanic {
 
 // Multiplayer bosses - MUST match backend bosses in routes/legend/constants.js
 // Theme: Crypto scammers in medieval LORD-style fantasy setting
+// XP BALANCE: ~50-75% of one level per boss kill (meaningful but not game-breaking)
 export const MULTIPLAYER_BOSSES: Record<string, MultiplayerBoss> = {
     do_kwon: {
         id: 'do_kwon',
@@ -528,8 +529,8 @@ export const MULTIPLAYER_BOSSES: Record<string, MultiplayerBoss> = {
         requiredPlayers: 4,
         requiredRoles: [],
         rewards: {
-            goldPerPlayer: 5000,      // 10x from 500
-            xpPerPlayer: 3000,        // 10x from 300
+            goldPerPlayer: 500,       // Reasonable gold reward
+            xpPerPlayer: 300,         // ~55% of level 10 requirement (550 XP needed)
             specialLoot: ['Luna Tokens', 'Extradition Papers', 'Stolen USDT Wallet']
         },
         mechanics: [
@@ -557,8 +558,8 @@ export const MULTIPLAYER_BOSSES: Record<string, MultiplayerBoss> = {
         requiredPlayers: 4,
         requiredRoles: ['tank', 'support'],
         rewards: {
-            goldPerPlayer: 25000,     // 10x from 2500
-            xpPerPlayer: 15000,       // 10x from 1500
+            goldPerPlayer: 2500,      // Scales with difficulty
+            xpPerPlayer: 800,         // ~63% of level 25 requirement (1275 XP needed)
             specialLoot: ['FTX Crown', 'Alameda Ledger', 'Bahamas Deed']
         },
         mechanics: [
@@ -592,8 +593,8 @@ export const MULTIPLAYER_BOSSES: Record<string, MultiplayerBoss> = {
         requiredPlayers: 4,
         requiredRoles: ['damage'],
         rewards: {
-            goldPerPlayer: 80000,     // 10x from 8000
-            xpPerPlayer: 50000,       // 10x from 5000
+            goldPerPlayer: 8000,      // High-end reward for hardest boss
+            xpPerPlayer: 1500,        // ~63% of level 50 requirement (2400 XP needed)
             specialLoot: ['Frozen Assets Key', 'Celsius Network Seal', 'Ponzi Scheme Blueprint']
         },
         mechanics: [

@@ -3,7 +3,7 @@ import { ethers } from 'ethers';
 import { toast } from 'react-toastify';
 import { motion } from 'framer-motion';
 import { WalletContext } from '../providers/WalletContext';
-import { GOLD_CONTRACT_ABI } from '../goldAbi';
+import { GOLD_CONTRACT_ABI } from '../goldV7Abi';
 import { CHARACTER_CONTRACT_ABI } from '../characterAbi';
 import { getContractAddress } from '../config/contracts';
 

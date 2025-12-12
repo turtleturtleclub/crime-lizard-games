@@ -13,10 +13,11 @@ import { useLegendGame } from '../../contexts/LegendGameContext';
 import { WalletContext } from '../../providers/WalletContext';
 import { NETWORKS } from '../../providers/WalletProvider';
 import { ethers } from 'ethers';
-import { SLOTS_V9_ABI } from '../../slotsV9Abi';
-const SLOTS_ABI = SLOTS_V9_ABI;
+import { SLOTS_V11_ABI } from '../../slotsV11Abi';
+const SLOTS_ABI = SLOTS_V11_ABI;
 import { toast } from 'react-toastify';
 import { useModalClose } from '../../hooks/useModalClose';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 interface CasinoProps {
     player: PlayerCharacter;
@@ -25,14 +26,14 @@ interface CasinoProps {
     setGameMessage: (message: string) => void;
 }
 
-// Slots Contract Type
+// Slots Contract Type (V11 - Server-signed randomness)
 type CrimeLizardSlots = ethers.BaseContract & {
     // Character management
     selectCharacter(tokenId: bigint): Promise<ethers.TransactionResponse>;
     getActiveCharacter(player: string): Promise<bigint>;
 
-    // Game functions
-    spin(betAmount: bigint, userRandomNumber: string, overrides?: ethers.Overrides): Promise<ethers.TransactionResponse>;
+    // Game functions (V11: server-signed randomness)
+    spin(betAmount: bigint, randomSeed: string, nonce: string, signature: string, overrides?: ethers.Overrides): Promise<ethers.TransactionResponse>;
     freeSpins(address: string): Promise<bigint>;
     jackpot(): Promise<bigint>;
     playerStats(player: string): Promise<any>;
@@ -121,6 +122,7 @@ const sounds = {
 const Casino: React.FC<CasinoProps> = ({ player, updatePlayer, onClose, setGameMessage }) => {
     // Handle ESC key, mobile back button, and keyboard dismissal
     useModalClose(onClose);
+    const { t } = useLanguage();
 
     // Wallet and blockchain setup
     const { account, currentChainId, provider } = useContext(WalletContext);
@@ -149,20 +151,29 @@ const Casino: React.FC<CasinoProps> = ({ player, updatePlayer, onClose, setGameM
     const spinAnimationRef = useRef<number | undefined>(undefined);
     const spinningRef = useRef<boolean>(false);
     const processedSequenceNumbers = useRef<Set<string>>(new Set()); // Track processed (V4 uses sequenceNumber)
+    const isMountedRef = useRef<boolean>(true); // Track if component is still mounted
+
+    // Set up mounted ref cleanup
+    useEffect(() => {
+        isMountedRef.current = true;
+        return () => {
+            isMountedRef.current = false;
+        };
+    }, []);
 
     // Fetch gold balance from database (source of truth)
     const fetchDatabaseGold = useCallback(async () => {
-        if (!account || !selectedCharacter) return;
+        if (!account || !selectedCharacter || !isMountedRef.current) return;
 
         try {
             const response = await fetch(`/api/legend/player/${account}/${selectedCharacter.tokenId.toString()}`);
-            if (response.ok) {
+            if (response.ok && isMountedRef.current) {
                 const data = await response.json();
                 const gold = data.gold || 0;
-                setDatabaseGold(gold);
-}
+                if (isMountedRef.current) setDatabaseGold(gold);
+            }
         } catch (error) {
-            console.error('❌ Casino: Failed to fetch database gold:', error);
+            if (isMountedRef.current) console.error('❌ Casino: Failed to fetch database gold:', error);
         }
     }, [account, selectedCharacter]);
 
@@ -370,34 +381,34 @@ await tx.wait();
     }, []);
 
     const refreshJackpot = useCallback(async () => {
-        if (contract) {
+        if (contract && isMountedRef.current) {
             try {
                 const jp = await contract.jackpot();
-                setJackpotAmount(Number(jp));
+                if (isMountedRef.current) setJackpotAmount(Number(jp));
             } catch (error) {
-                console.error('Failed to refresh jackpot:', error);
+                if (isMountedRef.current) console.error('Failed to refresh jackpot:', error);
             }
         }
     }, [contract]);
 
     const refreshPlayerStats = useCallback(async () => {
-        if (contract && account) {
+        if (contract && account && isMountedRef.current) {
             try {
                 const stats = await contract.playerStats(account);
-                setSpinsCount(Number(stats.totalSpins || stats[0]));
+                if (isMountedRef.current) setSpinsCount(Number(stats.totalSpins || stats[0]));
             } catch (error) {
-                console.error('Failed to refresh player stats:', error);
+                if (isMountedRef.current) console.error('Failed to refresh player stats:', error);
             }
         }
     }, [contract, account]);
 
     const refreshFreeSpins = async () => {
-        if (contract && account) {
+        if (contract && account && isMountedRef.current) {
             try {
                 const fs = await contract.freeSpins(account);
-                setFreeSpinsCount(Number(fs));
+                if (isMountedRef.current) setFreeSpinsCount(Number(fs));
             } catch (error) {
-                console.error('Failed to refresh free spins:', error);
+                if (isMountedRef.current) console.error('Failed to refresh free spins:', error);
             }
         }
     };
@@ -451,14 +462,28 @@ await tx.wait();
             const signer = await provider.getSigner();
             const contractWithSigner = contract.connect(signer) as CrimeLizardSlots;
 
-            // Generate user randomness for V5 instant randomness
-            const userRandomNumber = ethers.hexlify(ethers.randomBytes(32));
-
             // IMPORTANT: Always pass the bet amount, even for free spins
             // The contract validates the bet BEFORE checking free spins, then decides internally
             // whether to deduct gold based on freeSpins balance
             const betAmountGold = BigInt(betAmount);
 
+            // Request server-signed randomness for V11
+            const signatureResponse = await fetch('/api/legend/slots-signature', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    playerAddress: account,
+                    characterId: Number(selectedCharacter.tokenId),
+                    betAmount: betAmount
+                })
+            });
+
+            if (!signatureResponse.ok) {
+                const errorData = await signatureResponse.json();
+                throw new Error(errorData.error || 'Failed to get randomness signature');
+            }
+
+            const { randomSeed, nonce, signature } = await signatureResponse.json();
 
             // Start spin animation
             sounds.spin.play();
@@ -469,7 +494,9 @@ await tx.wait();
 
             try {
                 // Use getFunction to properly access estimateGas on the contract method
-                const gasEstimate = await contractWithSigner.getFunction('spin').estimateGas(betAmountGold, userRandomNumber);
+                const gasEstimate = await contractWithSigner.getFunction('spin').estimateGas(
+                    betAmountGold, randomSeed, nonce, signature
+                );
                 // Use 2x the estimate for safety, with minimum of 800k
                 gasLimit = Number(gasEstimate) * 2;
                 if (gasLimit < 800000) gasLimit = 800000;
@@ -477,7 +504,8 @@ await tx.wait();
                 console.warn('⚠️ Gas estimation failed, using conservative default:', gasLimit);
             }
 
-            const tx = await contractWithSigner.spin(betAmountGold, userRandomNumber, { gasLimit });
+            // V11: Server-signed randomness - pass (betAmount, randomSeed, nonce, signature)
+            const tx = await contractWithSigner.spin(betAmountGold, randomSeed, nonce, signature, { gasLimit });
 // Wait for transaction confirmation
             const receipt = await tx.wait();
 setIsProcessingTx(false);
@@ -504,13 +532,13 @@ await refreshGoldBalance();
                         if (parsedLog && parsedLog.name === 'SpinResult') {
                             foundSpinResult = true;
                             const args = parsedLog.args;
-                            const sequenceNumber = args.sequenceNumber?.toString();
+                            // Use nonce as unique identifier (each spin has unique nonce)
+                            const spinNonce = args.nonce?.toString() || `receipt-${Date.now()}`;
 
                             // Check if already processed
-                            if (sequenceNumber && processedSequenceNumbers.current.has(sequenceNumber)) {
-continue;
+                            if (processedSequenceNumbers.current.has(spinNonce)) {
+                                continue;
                             }
-
 
                             // Update session stats
                             if (!isFree) {
@@ -524,7 +552,7 @@ continue;
                                 casinoGoldLost: (player.casinoGoldLost || 0) + (isFree ? 0 : betAmount)
                             });
 
-                            processSpinResult(args, sequenceNumber);
+                            processSpinResult(args, spinNonce);
                         }
 
                         // ✅ Also parse FreeSpinsAwarded events from receipt!
@@ -611,18 +639,26 @@ setFreeSpinsCount(totalFreeSpins);
 
     /**
      * Process spin result (shared between event listener and polling)
+     * IMPORTANT: All visual updates (reels, highlights, sounds) happen FIRST and synchronously
+     * Database/blockchain updates happen AFTER to avoid timing issues
      */
     const processSpinResult = useCallback(async (args: any, sequenceNumber: string | undefined) => {
         if (sequenceNumber) {
             processedSequenceNumbers.current.add(sequenceNumber);
         }
 
+        // ============================================
+        // STEP 1: IMMEDIATELY stop animation and update visual state
+        // ============================================
         stopSpinAnimation();
+        setSpinning(false);
+        spinningRef.current = false;
 
         // V4: Get reels and winning paylines from event
         const reels = args.reels ? Array.from(args.reels).map(Number) : [];
         const winningPaylines = args.winningPaylines ? Array.from(args.winningPaylines).map(Number) : [];
-// Convert to reel matrix (column-major)
+
+        // Convert to reel matrix (row-major from contract to column-major for display)
         const reelMatrix = Array(5).fill(0).map((_, col) => [
             reels[col],
             reels[5 + col],
@@ -630,50 +666,58 @@ setFreeSpinsCount(totalFreeSpins);
         ]);
 
         const reelImages = reelMatrix.map(col => col.map(idx => SYMBOLS[idx]));
+
+        // Set final reels IMMEDIATELY
         setReels(reelImages);
 
         const payoutAmount = parseInt(args.payout?.toString() || '0');
         const jackpotWon = parseInt(args.jackpotWon?.toString() || '0');
+        const isBonusGame = args.isBonusGame === true;
+
         setWinAmount(payoutAmount);
-        setSpinning(false);
-        spinningRef.current = false;
 
-        // Calculate gold change (win - bet)
-        const isFree = freeSpinsCount > 0;
-        const betCost = isFree ? 0 : betAmount;
-        const goldChange = payoutAmount - betCost;
-
-        // Update database gold immediately (database-first, background sync to blockchain)
-        if (goldChange !== 0) {
-            await updateDatabaseGold(
-                goldChange,
-                `Casino ${goldChange > 0 ? 'win' : 'loss'}: ${Math.abs(goldChange)} gold`
-            );
-        }
-
-        refreshJackpot();
-        refreshFreeSpins();
-
+        // ============================================
+        // STEP 2: Calculate and set winning positions IMMEDIATELY
+        // ============================================
         if (payoutAmount > 0) {
             // Use EXACT winning positions from contract!
-            const winningPositions = convertPaylinesToPositions(winningPaylines, reels);
-            setWinningPositions(winningPositions);
+            let winningPositions = convertPaylinesToPositions(winningPaylines, reels);
 
+            // If bonus game triggered, also highlight all LIZARD symbols (symbol index 2)
+            if (isBonusGame) {
+                const bonusPositions = new Set(winningPositions);
+                reels.forEach((symbolIdx, pos) => {
+                    if (symbolIdx === 2) { // LIZARD symbol
+                        const col = pos % 5;
+                        const row = Math.floor(pos / 5);
+                        bonusPositions.add(`${col}-${row}`);
+                    }
+                });
+                winningPositions = bonusPositions;
+            }
+
+            setWinningPositions(winningPositions);
             setLastWin(payoutAmount);
             setTotalWon(prev => prev + payoutAmount);
 
-            // Update casino stats (no XP bonus - XP is earned through gameplay/combat)
-            updatePlayer({
-                casinoGoldWon: (player.casinoGoldWon || 0) + payoutAmount,
-                casinoBiggestWin: Math.max((player.casinoBiggestWin || 0), payoutAmount)
-            });
-
-            // Use explicit jackpotWon value
+            // ============================================
+            // STEP 3: Play sounds and show messages IMMEDIATELY
+            // ============================================
             const isJackpot = jackpotWon > 0;
             if (isJackpot) {
                 sounds.jackpot.play();
                 setGameMessage(`🎰 JACKPOT! Won ${payoutAmount.toLocaleString()} gold!`);
                 toast.success(`🎰 JACKPOT! Won ${payoutAmount.toLocaleString()} gold!`);
+            } else if (isBonusGame && winningPaylines.length === 0) {
+                // Pure bonus game win (no payline wins)
+                sounds.win.play();
+                setGameMessage(`🦎 LIZARD BONUS! Won ${payoutAmount.toLocaleString()} gold!`);
+                toast.success(`🦎 LIZARD BONUS! Won ${payoutAmount.toLocaleString()} gold!`);
+            } else if (isBonusGame) {
+                // Payline win + bonus game
+                sounds.win.play();
+                setGameMessage(`Won ${payoutAmount.toLocaleString()} gold! (includes 🦎 bonus)`);
+                toast.success(`Won ${payoutAmount.toLocaleString()} gold! (includes 🦎 bonus)`);
             } else {
                 sounds.win.play();
                 setGameMessage(`Won ${payoutAmount.toLocaleString()} gold!`);
@@ -684,6 +728,35 @@ setFreeSpinsCount(totalFreeSpins);
             setGameMessage('Better luck next time...');
             toast.info('No win this time. Spin again!', { autoClose: 2000 });
         }
+
+        // ============================================
+        // STEP 4: Update stats (can be sync, no await needed)
+        // ============================================
+        if (payoutAmount > 0) {
+            updatePlayer({
+                casinoGoldWon: (player.casinoGoldWon || 0) + payoutAmount,
+                casinoBiggestWin: Math.max((player.casinoBiggestWin || 0), payoutAmount)
+            });
+        }
+
+        // ============================================
+        // STEP 5: Background updates (async, after visuals are done)
+        // ============================================
+        const isFree = freeSpinsCount > 0;
+        const betCost = isFree ? 0 : betAmount;
+        const goldChange = payoutAmount - betCost;
+
+        // These happen in background - don't block the UI
+        if (goldChange !== 0) {
+            updateDatabaseGold(
+                goldChange,
+                `Casino ${goldChange > 0 ? 'win' : 'loss'}: ${Math.abs(goldChange)} gold`
+            ).catch(err => console.error('Failed to update database gold:', err));
+        }
+
+        // Refresh jackpot and free spins in background
+        refreshJackpot();
+        refreshFreeSpins();
     }, [convertPaylinesToPositions, player, betAmount, freeSpinsCount, refreshFreeSpins, refreshJackpot, setGameMessage, updatePlayer, updateDatabaseGold]);
 
     // Spin animation helpers
@@ -704,37 +777,42 @@ setFreeSpinsCount(totalFreeSpins);
         }
     };
 
-    // Listen for V5 SpinResult events
+    // Listen for SpinResult events (backup for WebSocket - receipt parsing is primary)
     useEffect(() => {
         if (!contract || !account) return;
-// V4 Event Signature: (player, sequenceNumber, payout, jackpotWon, reels, winningPaylines, isBonusGame, timestamp)
+
+        // V11 Event: (player, characterId, payout, jackpotWon, reels, winningPaylines, isBonusGame, betAmount, nonce, timestamp)
         const handleSpinResult = async (
             playerAddr: string,
-            sequenceNumber: bigint,
+            _characterId: bigint,
             payout: bigint,
             jackpotWon: bigint,
             reels: number[],
             winningPaylines: number[],
-            _isBonusGame: boolean,
+            isBonusGame: boolean,
+            _betAmount: bigint,
+            nonce: string,
             _timestamp: bigint,
             _event: any
         ) => {
-
             if (playerAddr.toLowerCase() !== account.toLowerCase()) {
                 return;
             }
 
-            const seqNum = sequenceNumber.toString();
-            if (processedSequenceNumbers.current.has(seqNum)) {
-return;
+            // Use nonce as unique identifier
+            const spinNonce = nonce?.toString() || `event-${Date.now()}`;
+            if (processedSequenceNumbers.current.has(spinNonce)) {
+                return;
             }
 
             processSpinResult({
                 payout,
                 jackpotWon,
                 reels,
-                winningPaylines
-            }, seqNum);
+                winningPaylines,
+                isBonusGame,
+                nonce
+            }, spinNonce);
         };
 
         contract.on('SpinResult', handleSpinResult);
@@ -826,13 +904,13 @@ return;
                 {/* Header */}
                 <div className="text-center mb-4 md:mb-6">
                     <div className="text-2xl md:text-4xl font-bold text-[#FFD700] text-glow-gold mb-1 md:mb-2">
-                        🎰 CRIME LIZARD SLOTS 🎰
+                        {t.casino.title}
                     </div>
                     <div className="text-xs md:text-sm text-gray-400 mb-1">
-                        Spin the reels and win big! Test your luck!
+                        {t.casino.subtitle}
                     </div>
                     <div className="text-xs text-gray-400 hidden md:block">
-                        ⚡ <strong className="text-[#FFD700]">Free to Play</strong> • <strong className="text-[#00FF88]">Instant Wins</strong> • <strong className="text-[#FFD700]">Progressive Jackpot</strong>
+                        ⚡ {t.casino.freeToPlay}
                     </div>
                 </div>
 
@@ -848,10 +926,10 @@ return;
                                 <span className="text-2xl">🎁</span>
                                 <div>
                                     <div className="text-[#FFD700] font-bold">
-                                        {freeSpinsCount} Free Spin{freeSpinsCount !== 1 ? 's' : ''} Available!
+                                        {t.casino.freeSpinsAvailable.replace('{count}', freeSpinsCount.toString())}
                                     </div>
                                     <div className="text-xs text-gray-400">
-                                        Next spin is FREE (no gold required) • 2.5x Multiplier!
+                                        {t.casino.freeSpinsDesc}
                                     </div>
                                 </div>
                             </div>
@@ -866,19 +944,19 @@ return;
                 <div className="grid grid-cols-4 gap-2 md:gap-3 mb-4">
                     <div className="bg-black border border-[#FFD700] p-2 md:p-3 text-center">
                         <div className="text-[#FFD700] text-base md:text-2xl font-bold">{databaseGold.toLocaleString()}</div>
-                        <div className="text-[10px] md:text-xs text-gray-400">Gold Available</div>
+                        <div className="text-[10px] md:text-xs text-gray-400">{t.casino.goldAvailable}</div>
                     </div>
                     <div className="bg-black border border-[#00FF88] p-2 md:p-3 text-center">
                         <div className="text-[#00FF88] text-base md:text-2xl font-bold">{lastWin.toLocaleString()}</div>
-                        <div className="text-[10px] md:text-xs text-gray-400">Last Win</div>
+                        <div className="text-[10px] md:text-xs text-gray-400">{t.casino.lastWin}</div>
                     </div>
                     <div className="bg-black border border-gray-700 p-2 md:p-3 text-center">
                         <div className="text-white text-base md:text-2xl font-bold">{spinsCount}</div>
-                        <div className="text-[10px] md:text-xs text-gray-400">Spins Today</div>
+                        <div className="text-[10px] md:text-xs text-gray-400">{t.casino.spinsToday}</div>
                     </div>
                     <div className="bg-black border border-[#FFD700] p-2 md:p-3 text-center">
                         <div className="text-[#FFD700] text-base md:text-2xl font-bold">{jackpotAmount.toLocaleString()}</div>
-                        <div className="text-[10px] md:text-xs text-gray-400">Progressive Jackpot</div>
+                        <div className="text-[10px] md:text-xs text-gray-400">{t.casino.progressiveJackpot}</div>
                     </div>
                 </div>
 
@@ -895,10 +973,10 @@ return;
                             className="text-center mb-4 p-3 bg-black border border-[#FFD700]"
                         >
                             <div className="text-2xl font-bold text-[#FFD700] animate-pulse">
-                                🎁 FREE SPIN MODE ACTIVE! 🎁
+                                🎁 {t.casino.freeSpinModeActive} 🎁
                             </div>
                             <div className="text-sm text-gray-400">
-                                Playing with house money • {freeSpinsCount} spin{freeSpinsCount !== 1 ? 's' : ''} remaining!
+                                {t.casino.playingHouseMoney.replace('{count}', freeSpinsCount.toString())}
                             </div>
                         </motion.div>
                     )}
@@ -965,7 +1043,7 @@ return;
                 {/* Betting Controls */}
                 <div className="bg-black/60 border-2 border-cyan-500 p-4 mb-4">
                     <div className="text-cyan-400 font-bold mb-3 text-center">
-                        {freeSpinsCount > 0 ? '🎁 Free Spin Ready!' : 'Place Your Bet'}
+                        {freeSpinsCount > 0 ? `🎁 ${t.casino.freeSpinReady}` : t.casino.placeYourBet}
                     </div>
 
                     <div className="flex items-center justify-center gap-3 mb-3">
@@ -987,7 +1065,7 @@ return;
 
                         <div className="bg-black border-3 border-yellow-500 px-6 md:px-8 py-2 md:py-3 min-w-[120px] md:min-w-[150px] text-center">
                             <div className="text-2xl md:text-3xl font-bold text-yellow-400">{betAmount}</div>
-                            <div className="text-xs text-gray-400">gold</div>
+                            <div className="text-xs text-gray-400">{t.casino.gold}</div>
                         </div>
 
                         <button
@@ -1035,13 +1113,13 @@ return;
                             : 'bg-[#00AA55] border-[#00FF88] text-[#00FF88] hover:bg-[#00BB66]'
                             }`}
                     >
-                        {isProcessingTx ? '⏳ PROCESSING...' : spinning ? '🎰 SPINNING...' : freeSpinsCount > 0 ? '🎁 FREE SPIN!' : '🎰 SPIN'}
+                        {isProcessingTx ? `⏳ ${t.casino.processing}...` : spinning ? `🎰 ${t.casino.spinning}...` : freeSpinsCount > 0 ? `🎁 ${t.casino.freeSpin}` : `🎰 ${t.casino.spin}`}
                     </button>
                 </div>
 
                 {/* Payout Table */}
                 <div className="bg-black border-2 border-[#FFD700] p-3 md:p-4 mb-4">
-                    <div className="text-[#FFD700] text-glow-gold font-bold mb-2 text-center text-sm md:text-base">💰 Symbol Payouts</div>
+                    <div className="text-[#FFD700] text-glow-gold font-bold mb-2 text-center text-sm md:text-base">💰 {t.casino.symbolPayouts}</div>
                     <div className="grid grid-cols-2 gap-1 md:gap-2 text-xs mb-3">
                         {Object.entries(PAYOUTS).filter(([idx]) => parseInt(idx) < 8).map(([symbolIndex, multipliers]) => {
                             const idx = parseInt(symbolIndex);
@@ -1061,39 +1139,39 @@ return;
                     <div className="border-t border-gray-700 pt-2 space-y-1">
                         <div className="flex items-center gap-1 md:gap-2 text-[10px] md:text-xs">
                             <img src={SYMBOLS[8]} alt="BNB" className="w-4 h-4 md:w-5 md:h-5 object-contain flex-shrink-0" />
-                            <span className="text-yellow-400">🎰 BNB: Jackpot (5+ anywhere)</span>
+                            <span className="text-yellow-400">🎰 BNB: {t.casino.jackpot5}</span>
                         </div>
                         <div className="flex items-center gap-1 md:gap-2 text-[10px] md:text-xs">
                             <img src={SYMBOLS[9]} alt="SCATTER" className="w-4 h-4 md:w-5 md:h-5 object-contain flex-shrink-0" />
-                            <span className="text-cyan-400">🎁 SCATTER: 3=10, 4=15, 5=25 FREE SPINS</span>
+                            <span className="text-cyan-400">🎁 SCATTER: {t.casino.freeSpins345}</span>
                         </div>
                         <div className="flex items-center gap-1 md:gap-2 text-[10px] md:text-xs">
                             <img src={SYMBOLS[2]} alt="LIZARD" className="w-4 h-4 md:w-5 md:h-5 object-contain flex-shrink-0" />
-                            <span className="text-green-400">🦎 LIZARD: 3+ BONUS GAME</span>
+                            <span className="text-green-400">🦎 LIZARD: {t.casino.bonusGame3}</span>
                         </div>
                     </div>
                 </div>
 
                 {/* Session Stats */}
                 <div className="bg-black border-2 border-[#00FF88] p-3 mb-4 text-sm">
-                    <div className="text-center text-[#00FF88] font-bold mb-2">Session Stats</div>
+                    <div className="text-center text-[#00FF88] font-bold mb-2">{t.casino.sessionStats}</div>
                     <div className="grid grid-cols-2 gap-2 text-gray-400 mb-3">
-                        <div>Won: <span className="text-[#00FF88] font-bold">{totalWon.toLocaleString()}</span></div>
-                        <div>Lost: <span className="text-red-400 font-bold">{totalLost.toLocaleString()}</span></div>
-                        <div>Net: <span className={`font-bold ${totalWon - totalLost >= 0 ? 'text-[#00FF88]' : 'text-red-400'}`}>
+                        <div>{t.casino.won} <span className="text-[#00FF88] font-bold">{totalWon.toLocaleString()}</span></div>
+                        <div>{t.casino.lost} <span className="text-red-400 font-bold">{totalLost.toLocaleString()}</span></div>
+                        <div>{t.casino.net} <span className={`font-bold ${totalWon - totalLost >= 0 ? 'text-[#00FF88]' : 'text-red-400'}`}>
                             {(totalWon - totalLost).toLocaleString()}
                         </span></div>
-                        <div>Spins: <span className="text-[#FFD700] font-bold">{spinsCount}</span></div>
+                        <div>{t.casino.spins} <span className="text-[#FFD700] font-bold">{spinsCount}</span></div>
                     </div>
 
                     {/* All-Time Stats */}
                     <div className="border-t border-gray-700 pt-2">
-                        <div className="text-center text-[#FFD700] font-bold mb-2 text-xs">All-Time Casino Stats</div>
+                        <div className="text-center text-[#FFD700] font-bold mb-2 text-xs">{t.casino.allTimeStats}</div>
                         <div className="grid grid-cols-2 gap-2 text-gray-500 text-xs">
-                            <div>Total Spins: <span className="text-purple-300">{(player.casinoSpins || 0).toLocaleString()}</span></div>
-                            <div>Biggest Win: <span className="text-yellow-300">{(player.casinoBiggestWin || 0).toLocaleString()}</span></div>
-                            <div>Total Won: <span className="text-green-300">{(player.casinoGoldWon || 0).toLocaleString()}</span></div>
-                            <div>Total Lost: <span className="text-red-300">{(player.casinoGoldLost || 0).toLocaleString()}</span></div>
+                            <div>{t.casino.totalSpins}: <span className="text-purple-300">{(player.casinoSpins || 0).toLocaleString()}</span></div>
+                            <div>{t.casino.biggestWin}: <span className="text-yellow-300">{(player.casinoBiggestWin || 0).toLocaleString()}</span></div>
+                            <div>{t.casino.totalWon}: <span className="text-green-300">{(player.casinoGoldWon || 0).toLocaleString()}</span></div>
+                            <div>{t.casino.lost} <span className="text-red-300">{(player.casinoGoldLost || 0).toLocaleString()}</span></div>
                         </div>
                     </div>
                 </div>
@@ -1104,7 +1182,7 @@ return;
                     disabled={spinning || isProcessingTx}
                     className="w-full px-4 py-3 bg-black border-2 border-gray-700 text-gray-400 hover:border-[#00FF88] hover:text-[#00FF88] font-bold disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                 >
-                    {(spinning || isProcessingTx) ? 'Wait for spin to finish...' : '[ESC] Leave Casino'}
+                    {(spinning || isProcessingTx) ? t.casino.waitForSpin : t.casino.escLeave}
                 </button>
             </motion.div>
         </motion.div>

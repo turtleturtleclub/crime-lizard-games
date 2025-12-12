@@ -1,10 +1,10 @@
 /**
- * @title CrimeLizardSlots Contract ABI
+ * @title CrimeLizardSlotsV11 Contract ABI
  * @notice Slot machine game contract for Crime Lizard ecosystem
- * @dev Uses instant on-chain randomness with balanced RTP
+ * @dev Server-signed randomness with upgradeable gold contract
  */
 
-export const SLOTS_V9_ABI = [
+export const SLOTS_V11_ABI = [
   {
     "inputs": [
       {
@@ -16,10 +16,42 @@ export const SLOTS_V9_ABI = [
         "internalType": "address",
         "name": "_goldContract",
         "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "_randomnessSigner",
+        "type": "address"
       }
     ],
     "stateMutability": "nonpayable",
     "type": "constructor"
+  },
+  {
+    "inputs": [],
+    "name": "ECDSAInvalidSignature",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "length",
+        "type": "uint256"
+      }
+    ],
+    "name": "ECDSAInvalidSignatureLength",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "s",
+        "type": "bytes32"
+      }
+    ],
+    "name": "ECDSAInvalidSignatureS",
+    "type": "error"
   },
   {
     "inputs": [],
@@ -29,6 +61,46 @@ export const SLOTS_V9_ABI = [
   {
     "inputs": [],
     "name": "ExpectedPause",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "InsufficientGold",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "InvalidBetAmount",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "InvalidSignature",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "InvalidSigner",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "NoActiveCharacter",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "NonceAlreadyUsed",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "NotCharacterOwner",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "NotOwner",
     "type": "error"
   },
   {
@@ -46,6 +118,12 @@ export const SLOTS_V9_ABI = [
         "type": "address"
       },
       {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "characterId",
+        "type": "uint256"
+      },
+      {
         "indexed": false,
         "internalType": "uint256",
         "name": "amount",
@@ -56,12 +134,6 @@ export const SLOTS_V9_ABI = [
         "internalType": "uint256",
         "name": "lizardCount",
         "type": "uint256"
-      },
-      {
-        "indexed": true,
-        "internalType": "uint64",
-        "name": "sequenceNumber",
-        "type": "uint64"
       },
       {
         "indexed": false,
@@ -124,12 +196,6 @@ export const SLOTS_V9_ABI = [
         "internalType": "uint256",
         "name": "timestamp",
         "type": "uint256"
-      },
-      {
-        "indexed": true,
-        "internalType": "uint64",
-        "name": "sequenceNumber",
-        "type": "uint64"
       }
     ],
     "name": "FreeSpinsAwarded",
@@ -164,6 +230,25 @@ export const SLOTS_V9_ABI = [
       }
     ],
     "name": "GoldBetPlaced",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "oldContract",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "newContract",
+        "type": "address"
+      }
+    ],
+    "name": "GoldContractUpdated",
     "type": "event"
   },
   {
@@ -207,6 +292,12 @@ export const SLOTS_V9_ABI = [
         "type": "address"
       },
       {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "characterId",
+        "type": "uint256"
+      },
+      {
         "indexed": false,
         "internalType": "uint256",
         "name": "amount",
@@ -223,12 +314,6 @@ export const SLOTS_V9_ABI = [
         "internalType": "uint256",
         "name": "timestamp",
         "type": "uint256"
-      },
-      {
-        "indexed": true,
-        "internalType": "uint64",
-        "name": "sequenceNumber",
-        "type": "uint64"
       }
     ],
     "name": "JackpotWon",
@@ -252,36 +337,18 @@ export const SLOTS_V9_ABI = [
     "inputs": [
       {
         "indexed": true,
-        "internalType": "uint64",
-        "name": "sequenceNumber",
-        "type": "uint64"
+        "internalType": "address",
+        "name": "oldSigner",
+        "type": "address"
       },
       {
         "indexed": true,
         "internalType": "address",
-        "name": "player",
+        "name": "newSigner",
         "type": "address"
-      },
-      {
-        "indexed": false,
-        "internalType": "uint256",
-        "name": "bet",
-        "type": "uint256"
-      },
-      {
-        "indexed": false,
-        "internalType": "uint256",
-        "name": "timestamp",
-        "type": "uint256"
-      },
-      {
-        "indexed": false,
-        "internalType": "bool",
-        "name": "isFreeSpin",
-        "type": "bool"
       }
     ],
-    "name": "SpinRequested",
+    "name": "SignerUpdated",
     "type": "event"
   },
   {
@@ -295,9 +362,9 @@ export const SLOTS_V9_ABI = [
       },
       {
         "indexed": true,
-        "internalType": "uint64",
-        "name": "sequenceNumber",
-        "type": "uint64"
+        "internalType": "uint256",
+        "name": "characterId",
+        "type": "uint256"
       },
       {
         "indexed": false,
@@ -328,6 +395,18 @@ export const SLOTS_V9_ABI = [
         "internalType": "bool",
         "name": "isBonusGame",
         "type": "bool"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "betAmount",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "bytes32",
+        "name": "nonce",
+        "type": "bytes32"
       },
       {
         "indexed": false,
@@ -604,7 +683,7 @@ export const SLOTS_V9_ABI = [
             "type": "uint256"
           }
         ],
-        "internalType": "struct CrimeLizardSlotsV9.PlayerStats",
+        "internalType": "struct CrimeLizardSlotsV11.PlayerStats",
         "name": "",
         "type": "tuple"
       }
@@ -884,6 +963,19 @@ export const SLOTS_V9_ABI = [
     "type": "function"
   },
   {
+    "inputs": [],
+    "name": "randomnessSigner",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
     "inputs": [
       {
         "internalType": "uint256",
@@ -917,6 +1009,19 @@ export const SLOTS_V9_ABI = [
   {
     "inputs": [
       {
+        "internalType": "address",
+        "name": "newGoldContract",
+        "type": "address"
+      }
+    ],
+    "name": "setGoldContract",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
         "internalType": "uint256",
         "name": "newFee",
         "type": "uint256"
@@ -943,12 +1048,53 @@ export const SLOTS_V9_ABI = [
   {
     "inputs": [
       {
+        "internalType": "uint8",
+        "name": "tierIndex",
+        "type": "uint8"
+      },
+      {
+        "internalType": "uint256",
+        "name": "minBet",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "baseChance",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "bonusMultiplier",
+        "type": "uint256"
+      }
+    ],
+    "name": "setJackpotTier",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
         "internalType": "uint16[3][10]",
         "name": "newPayouts",
         "type": "uint16[3][10]"
       }
     ],
     "name": "setPayouts",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "newSigner",
+        "type": "address"
+      }
+    ],
+    "name": "setSigner",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
@@ -974,9 +1120,19 @@ export const SLOTS_V9_ABI = [
         "type": "uint256"
       },
       {
+        "internalType": "uint256",
+        "name": "randomSeed",
+        "type": "uint256"
+      },
+      {
         "internalType": "bytes32",
-        "name": "userRandomSeed",
+        "name": "nonce",
         "type": "bytes32"
+      },
+      {
+        "internalType": "bytes",
+        "name": "signature",
+        "type": "bytes"
       }
     ],
     "name": "spin",
@@ -1095,10 +1251,29 @@ export const SLOTS_V9_ABI = [
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "",
+        "type": "bytes32"
+      }
+    ],
+    "name": "usedNonces",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
   }
 ] as const;
 
 // Mainnet only - BSC Chain ID 56
 export const SLOTS_CONTRACT_ADDRESS = {
-    mainnet: import.meta.env.VITE_SLOTS_MAINNET || "0xDA408551780187263f584115985F96AAAA96721F"
+    mainnet: import.meta.env.VITE_SLOTS_MAINNET || "0x5f8eA3e8a093F5B3Ec77C3C4437B151789c2AAB6"
 } as const;

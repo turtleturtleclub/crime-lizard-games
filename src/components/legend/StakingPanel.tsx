@@ -9,9 +9,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'react-toastify';
 import { WalletContext } from '../../providers/WalletContext';
 import { getContractAddress } from '../../config/contracts';
-import { GOLD_CONTRACT_ABI } from '../../goldAbi';
+import { GOLD_CONTRACT_ABI } from '../../goldV7Abi';
 import { CLZD_ABI } from '../../clzdAbi';
 import { useModalClose } from '../../hooks/useModalClose';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 interface StakingPanelProps {
     isOpen: boolean;
@@ -36,6 +37,7 @@ interface StakingInfo {
 
 const StakingPanel: React.FC<StakingPanelProps> = ({ isOpen, onClose, tokenId }) => {
     const { account, signer, provider, currentChainId } = useContext(WalletContext);
+    const { t } = useLanguage();
 
     const [clzdBalance, setClzdBalance] = useState<string>('0');
     const [stakingInfo, setStakingInfo] = useState<StakingInfo | null>(null);
@@ -256,8 +258,8 @@ const StakingPanel: React.FC<StakingPanelProps> = ({ isOpen, onClose, tokenId })
                     <div className="p-6 border-b border-purple-500/30">
                         <div className="flex items-center justify-between">
                             <div>
-                                <h2 className="text-2xl font-bold text-purple-400">CLZD Staking</h2>
-                                <p className="text-gray-400 text-sm mt-1">Stake CLZD to earn gold and XP bonuses</p>
+                                <h2 className="text-2xl font-bold text-purple-400">{t.staking.title}</h2>
+                                <p className="text-gray-400 text-sm mt-1">{t.staking.subtitle}</p>
                             </div>
                             <button
                                 onClick={onClose}
@@ -271,29 +273,29 @@ const StakingPanel: React.FC<StakingPanelProps> = ({ isOpen, onClose, tokenId })
                     {loading ? (
                         <div className="p-12 text-center">
                             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-500 mx-auto mb-4"></div>
-                            <p className="text-gray-400">Loading staking info...</p>
+                            <p className="text-gray-400">{t.staking.loadingInfo}</p>
                         </div>
                     ) : (
                         <div className="p-6 space-y-6">
                             {/* Current Staking Status */}
                             <div className="bg-black/50 rounded-xl p-6 border border-purple-500/30">
-                                <h3 className="text-lg font-bold text-white mb-4">Your Staking Status</h3>
+                                <h3 className="text-lg font-bold text-white mb-4">{t.staking.yourStatus}</h3>
 
                                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
                                     <div className="bg-purple-900/30 rounded-lg p-3">
-                                        <p className="text-xs text-gray-400 mb-1">CLZD Balance</p>
+                                        <p className="text-xs text-gray-400 mb-1">{t.staking.clzdBalance}</p>
                                         <p className="text-lg font-bold text-purple-400">{formatNumber(clzdBalance)}</p>
                                     </div>
                                     <div className="bg-purple-900/30 rounded-lg p-3">
-                                        <p className="text-xs text-gray-400 mb-1">Staked</p>
+                                        <p className="text-xs text-gray-400 mb-1">{t.staking.staked}</p>
                                         <p className="text-lg font-bold text-green-400">{formatNumber(stakingInfo?.stakedAmount || '0')}</p>
                                     </div>
                                     <div className="bg-purple-900/30 rounded-lg p-3">
-                                        <p className="text-xs text-gray-400 mb-1">Gold Bonus</p>
+                                        <p className="text-xs text-gray-400 mb-1">{t.staking.goldBonus}</p>
                                         <p className="text-lg font-bold text-yellow-400">+{stakingInfo?.goldBonus || 0}%</p>
                                     </div>
                                     <div className="bg-purple-900/30 rounded-lg p-3">
-                                        <p className="text-xs text-gray-400 mb-1">XP Bonus</p>
+                                        <p className="text-xs text-gray-400 mb-1">{t.staking.xpBonus}</p>
                                         <p className="text-lg font-bold text-blue-400">+{stakingInfo?.xpBonus || 0}%</p>
                                     </div>
                                 </div>
@@ -301,21 +303,23 @@ const StakingPanel: React.FC<StakingPanelProps> = ({ isOpen, onClose, tokenId })
                                 {stakingInfo?.currentTier && (
                                     <div className="mt-4 text-center">
                                         <span className="bg-purple-600 px-3 py-1 rounded-full text-sm font-bold">
-                                            Current Tier: {formatNumber(stakingInfo.currentTier.threshold)} CLZD
+                                            {t.staking.currentTier.replace('{amount}', formatNumber(stakingInfo.currentTier.threshold))}
                                         </span>
-                                        <p className="text-xs text-gray-500 mt-2">Staking for: {getStakeDuration()}</p>
+                                        <p className="text-xs text-gray-500 mt-2">{t.staking.stakingFor.replace('{duration}', getStakeDuration())}</p>
                                     </div>
                                 )}
 
                                 {stakingInfo?.nextTier && (
                                     <div className="mt-4 text-center">
                                         <p className="text-sm text-gray-400">
-                                            Next tier at {formatNumber(stakingInfo.nextTier.threshold)} CLZD
-                                            (+{stakingInfo.nextTier.goldBonus}% gold, +{stakingInfo.nextTier.xpBonus}% XP)
+                                            {t.staking.nextTierAt
+                                                .replace('{amount}', formatNumber(stakingInfo.nextTier.threshold))
+                                                .replace('{goldBonus}', String(stakingInfo.nextTier.goldBonus))
+                                                .replace('{xpBonus}', String(stakingInfo.nextTier.xpBonus))}
                                         </p>
                                         {stakingInfo.stakedAmount && parseFloat(stakingInfo.stakedAmount) > 0 && (
                                             <p className="text-xs text-purple-400 mt-1">
-                                                Need {formatNumber(parseFloat(stakingInfo.nextTier.threshold) - parseFloat(stakingInfo.stakedAmount))} more CLZD
+                                                {t.staking.needMore.replace('{amount}', formatNumber(parseFloat(stakingInfo.nextTier.threshold) - parseFloat(stakingInfo.stakedAmount)))}
                                             </p>
                                         )}
                                     </div>
@@ -324,7 +328,7 @@ const StakingPanel: React.FC<StakingPanelProps> = ({ isOpen, onClose, tokenId })
 
                             {/* Staking Tiers */}
                             <div className="bg-black/50 rounded-xl p-6 border border-purple-500/30">
-                                <h3 className="text-lg font-bold text-white mb-4">Staking Tiers</h3>
+                                <h3 className="text-lg font-bold text-white mb-4">{t.staking.stakingTiers}</h3>
 
                                 <div className="space-y-2">
                                     {stakingTiers.map((tier, idx) => {
@@ -348,10 +352,10 @@ const StakingPanel: React.FC<StakingPanelProps> = ({ isOpen, onClose, tokenId })
                                                 </div>
                                                 <div className="flex gap-4 text-sm">
                                                     <span className={isActive ? 'text-yellow-400' : 'text-gray-500'}>
-                                                        +{tier.goldBonus}% Gold
+                                                        +{tier.goldBonus}% {t.staking.gold}
                                                     </span>
                                                     <span className={isActive ? 'text-blue-400' : 'text-gray-500'}>
-                                                        +{tier.xpBonus}% XP
+                                                        +{tier.xpBonus}% {t.staking.xp}
                                                     </span>
                                                 </div>
                                             </div>
@@ -364,7 +368,7 @@ const StakingPanel: React.FC<StakingPanelProps> = ({ isOpen, onClose, tokenId })
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 {/* Stake */}
                                 <div className="bg-green-900/20 rounded-xl p-4 border border-green-500/30">
-                                    <h4 className="text-lg font-bold text-green-400 mb-3">Stake CLZD</h4>
+                                    <h4 className="text-lg font-bold text-green-400 mb-3">{t.staking.stakeClzd}</h4>
 
                                     {needsApproval ? (
                                         <motion.button
@@ -374,7 +378,7 @@ const StakingPanel: React.FC<StakingPanelProps> = ({ isOpen, onClose, tokenId })
                                             whileHover={{ scale: 1.02 }}
                                             whileTap={{ scale: 0.98 }}
                                         >
-                                            {approving ? 'Approving...' : 'Approve CLZD'}
+                                            {approving ? t.staking.approving : t.staking.approveClzd}
                                         </motion.button>
                                     ) : (
                                         <>
@@ -383,14 +387,14 @@ const StakingPanel: React.FC<StakingPanelProps> = ({ isOpen, onClose, tokenId })
                                                     type="number"
                                                     value={stakeAmount}
                                                     onChange={(e) => setStakeAmount(e.target.value)}
-                                                    placeholder="Amount to stake"
+                                                    placeholder={t.staking.amountToStake}
                                                     className="flex-1 bg-black/50 px-3 py-2 rounded-lg text-white border border-green-500/30"
                                                 />
                                                 <button
                                                     onClick={() => setStakeAmount(clzdBalance)}
                                                     className="bg-green-600/30 hover:bg-green-600/50 px-3 py-2 rounded-lg text-green-400 text-sm font-bold"
                                                 >
-                                                    MAX
+                                                    {t.staking.max}
                                                 </button>
                                             </div>
                                             <motion.button
@@ -400,7 +404,7 @@ const StakingPanel: React.FC<StakingPanelProps> = ({ isOpen, onClose, tokenId })
                                                 whileHover={{ scale: 1.02 }}
                                                 whileTap={{ scale: 0.98 }}
                                             >
-                                                {staking ? 'Staking...' : 'Stake CLZD'}
+                                                {staking ? t.staking.staking : t.staking.stakeClzd}
                                             </motion.button>
                                         </>
                                     )}
@@ -408,21 +412,21 @@ const StakingPanel: React.FC<StakingPanelProps> = ({ isOpen, onClose, tokenId })
 
                                 {/* Unstake */}
                                 <div className="bg-red-900/20 rounded-xl p-4 border border-red-500/30">
-                                    <h4 className="text-lg font-bold text-red-400 mb-3">Unstake CLZD</h4>
+                                    <h4 className="text-lg font-bold text-red-400 mb-3">{t.staking.unstakeClzd}</h4>
 
                                     <div className="flex gap-2 mb-3">
                                         <input
                                             type="number"
                                             value={unstakeAmount}
                                             onChange={(e) => setUnstakeAmount(e.target.value)}
-                                            placeholder="Amount to unstake"
+                                            placeholder={t.staking.amountToUnstake}
                                             className="flex-1 bg-black/50 px-3 py-2 rounded-lg text-white border border-red-500/30"
                                         />
                                         <button
                                             onClick={() => setUnstakeAmount(stakingInfo?.stakedAmount || '0')}
                                             className="bg-red-600/30 hover:bg-red-600/50 px-3 py-2 rounded-lg text-red-400 text-sm font-bold"
                                         >
-                                            MAX
+                                            {t.staking.max}
                                         </button>
                                     </div>
                                     <motion.button
@@ -432,20 +436,20 @@ const StakingPanel: React.FC<StakingPanelProps> = ({ isOpen, onClose, tokenId })
                                         whileHover={{ scale: 1.02 }}
                                         whileTap={{ scale: 0.98 }}
                                     >
-                                        {unstaking ? 'Unstaking...' : 'Unstake CLZD'}
+                                        {unstaking ? t.staking.unstaking : t.staking.unstakeClzd}
                                     </motion.button>
                                 </div>
                             </div>
 
                             {/* Info */}
                             <div className="bg-blue-900/20 rounded-xl p-4 border border-blue-500/30">
-                                <h4 className="text-lg font-bold text-blue-400 mb-2">How Staking Works</h4>
+                                <h4 className="text-lg font-bold text-blue-400 mb-2">{t.staking.howItWorks}</h4>
                                 <ul className="text-sm text-gray-300 space-y-1">
-                                    <li>- Stake CLZD to your character to earn bonuses</li>
-                                    <li>- Gold bonus applies to all gold purchases</li>
-                                    <li>- XP bonus applies to combat and quest rewards</li>
-                                    <li>- Bonuses are based on the amount staked</li>
-                                    <li>- You can unstake at any time with no penalty</li>
+                                    <li>{t.staking.howItWorksDesc1}</li>
+                                    <li>{t.staking.howItWorksDesc2}</li>
+                                    <li>{t.staking.howItWorksDesc3}</li>
+                                    <li>{t.staking.howItWorksDesc4}</li>
+                                    <li>{t.staking.howItWorksDesc5}</li>
                                 </ul>
                             </div>
                         </div>

@@ -7,6 +7,7 @@ import PixelIcon from '../PixelIcon';
 import io from 'socket.io-client';
 import type { Socket } from 'socket.io-client';
 import { useModalClose } from '../../hooks/useModalClose';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 import type { PartyMember } from './MultiplayerBossCombat';
 
@@ -36,6 +37,7 @@ interface BossQueueProps {
 const BossQueue: React.FC<BossQueueProps> = ({ player, onClose, onBattleStart }) => {
     // Handle ESC key, mobile back button, and keyboard dismissal
     useModalClose(onClose);
+    const { t } = useLanguage();
 
     const [selectedBoss, setSelectedBoss] = useState<string | null>(null);
     const [currentRaid, setCurrentRaid] = useState<BossRaid | null>(null);
@@ -299,16 +301,16 @@ setCurrentRaid(null);
             >
                 {/* Header */}
                 <div className="text-[#00FF88] text-center mb-6 font-retro">
-                    <div className="text-2xl font-bold">⚔️  MULTIPLAYER BOSS QUEUE  ⚔️</div>
-                    <div className="text-sm mt-2">👥 TEAM UP • DEFEAT BOSSES • SHARE LOOT 👥</div>
+                    <div className="text-2xl font-bold">{t.bossQueue.title}</div>
+                    <div className="text-sm mt-2">{t.bossQueue.subtitle}</div>
                 </div>
 
                 <div className="flex justify-between items-start mb-6">
                     <div>
                         <h2 className="text-3xl font-bold text-[#00FF88] mb-2 font-retro">
-                            👹 Multiplayer Boss Battles
+                            {t.bossQueue.multiplayerBossBattles}
                         </h2>
-                        <p className="text-gray-400 font-retro">Some enemies require teamwork to defeat!</p>
+                        <p className="text-gray-400 font-retro">{t.bossQueue.teamworkRequired}</p>
                     </div>
                     <button
                         onClick={onClose}
@@ -340,7 +342,7 @@ setCurrentRaid(null);
                         className="mb-4 p-4 bg-[#00FF88]/10 border-2 border-[#00FF88] rounded-xl text-center"
                     >
                         <div className="text-[#00FF88] font-retro animate-pulse">
-                            ⏳ Processing...
+                            {t.bossQueue.processing}
                         </div>
                     </motion.div>
                 )}
@@ -377,21 +379,21 @@ setCurrentRaid(null);
                                                 <div className="bg-black border border-[#00FF88]/30 rounded-lg p-4 mb-4">
                                                     <h4 className="font-bold font-retro text-[#FFD700] mb-2 flex items-center gap-2">
                                                         <PixelIcon name="alert" size={16} glow={true} glowColor="gold" />
-                                                        Requirements:
+                                                        {t.bossQueue.requirements}
                                                     </h4>
                                                     <div className="grid grid-cols-2 gap-2 text-sm">
                                                         <div>
-                                                            <span className="text-gray-400">Players:</span>
+                                                            <span className="text-gray-400">{t.bossQueue.players}</span>
                                                             <span className="text-white ml-2 font-bold">{boss.requiredPlayers}</span>
                                                         </div>
                                                         <div>
-                                                            <span className="text-gray-400">Min Level:</span>
+                                                            <span className="text-gray-400">{t.bossQueue.minLevel}</span>
                                                             <span className="text-white ml-2 font-bold">{boss.level}</span>
                                                         </div>
                                                     </div>
                                                     {boss.requiredRoles && boss.requiredRoles.length > 0 && (
                                                         <div className="mt-2">
-                                                            <span className="text-gray-400">Required Roles:</span>
+                                                            <span className="text-gray-400">{t.bossQueue.requiredRoles}</span>
                                                             <div className="flex gap-2 mt-1">
                                                                 {boss.requiredRoles.map((role, i) => (
                                                                     <span key={i} className="px-2 py-1 bg-gray-700 rounded text-xs text-white">
@@ -405,7 +407,7 @@ setCurrentRaid(null);
 
                                                 {/* Mechanics */}
                                                 <div className="space-y-2">
-                                                    <h4 className="font-bold font-retro text-[#00FF88]">🎯 Boss Mechanics:</h4>
+                                                    <h4 className="font-bold font-retro text-[#00FF88]">{t.bossQueue.bossMechanics}</h4>
                                                     {boss.mechanics.map((mechanic, i) => (
                                                         <div key={i} className="text-sm text-gray-300 bg-black border border-[#00FF88]/20 rounded p-2 font-retro">
                                                             <span className="font-bold text-[#00FF88]">{mechanic.name}:</span> {mechanic.description}
@@ -418,17 +420,17 @@ setCurrentRaid(null);
                                             <div className="bg-black border-2 border-[#FFD700] rounded-xl p-4 shadow-lg shadow-[#FFD700]/20">
                                                 <h4 className="font-bold font-retro text-[#FFD700] mb-3 text-center flex items-center justify-center gap-2">
                                                     <PixelIcon name="trophy" size={16} glow={true} glowColor="gold" />
-                                                    Rewards (Per Player)
+                                                    {t.bossQueue.rewardsPerPlayer}
                                                 </h4>
                                                 <div className="space-y-2 text-sm font-retro">
                                                     <div className="flex justify-between">
-                                                        <span className="text-gray-300">Gold:</span>
+                                                        <span className="text-gray-300">{t.bossQueue.goldReward}</span>
                                                         <span className="text-[#FFD700] font-bold">
                                                             {boss.rewards.goldPerPlayer.toLocaleString()}
                                                         </span>
                                                     </div>
                                                     <div className="flex justify-between">
-                                                        <span className="text-gray-300">XP:</span>
+                                                        <span className="text-gray-300">{t.bossQueue.xpReward}</span>
                                                         <span className="text-[#00FF88] font-bold">
                                                             {boss.rewards.xpPerPlayer.toLocaleString()}
                                                         </span>
@@ -437,7 +439,7 @@ setCurrentRaid(null);
                                                         <div className="mt-3 pt-3 border-t border-[#FFD700]/30">
                                                             <div className="text-[#FFD700] font-bold mb-2 flex items-center gap-1">
                                                                 <PixelIcon name="gift" size={14} glow={true} glowColor="gold" />
-                                                                Special Loot:
+                                                                {t.bossQueue.specialLoot}
                                                             </div>
                                                             {boss.rewards.specialLoot.map((loot, i) => (
                                                                 <div key={i} className="text-xs text-gray-300">
@@ -450,7 +452,7 @@ setCurrentRaid(null);
 
                                                 {!canJoin && (
                                                     <div className="mt-4 text-center text-xs text-red-400 font-retro">
-                                                        🔒 Level {boss.level}+ Required
+                                                        {t.bossQueue.levelRequired.replace('{level}', boss.level.toString())}
                                                     </div>
                                                 )}
                                             </div>
@@ -474,7 +476,7 @@ setCurrentRaid(null);
                                                     {/* Button content */}
                                                     <span className="relative flex items-center gap-2 text-lg">
                                                         <span className="animate-pulse">⚔️</span>
-                                                        <span className="font-retro tracking-wider">{isLoading ? 'JOINING...' : 'JOIN QUEUE'}</span>
+                                                        <span className="font-retro tracking-wider">{isLoading ? t.bossQueue.joining : t.bossQueue.joinQueue}</span>
                                                         <span className="animate-pulse">⚔️</span>
                                                     </span>
                                                 </motion.button>
@@ -494,7 +496,7 @@ setCurrentRaid(null);
                                     <h3 className="text-2xl font-bold text-[#00FF88] font-retro">
                                         {MULTIPLAYER_BOSSES[selectedBoss!]?.name || 'Boss Battle'}
                                     </h3>
-                                    <p className="text-gray-400 font-retro">Forming party...</p>
+                                    <p className="text-gray-400 font-retro">{t.bossQueue.formingParty}</p>
                                 </div>
                                 <div className="text-center">
                                     <div className="text-4xl font-bold text-[#00FF88] font-retro">
@@ -515,7 +517,7 @@ setCurrentRaid(null);
                                 <div className="bg-black border border-[#FFD700] rounded-lg p-4 mb-4">
                                     <h4 className="font-bold font-retro text-[#FFD700] mb-2 flex items-center gap-2">
                                         <PixelIcon name="alert" size={16} glow={true} glowColor="gold" />
-                                        Role Requirements:
+                                        {t.bossQueue.roleRequirements}
                                     </h4>
                                     <div className="flex gap-2 flex-wrap">
                                         {currentRaid.requiredRoles.map((role, i) => {
@@ -541,7 +543,7 @@ setCurrentRaid(null);
                                         : 'bg-black text-gray-300 border-gray-700 hover:border-[#00FF88]'
                                         } disabled:opacity-50`}
                                 >
-                                    {isReady ? '✅ Ready!' : '⏳ Click When Ready'}
+                                    {isReady ? `✅ ${t.bossQueue.ready}` : t.bossQueue.clickWhenReady}
                                 </button>
                                 <button
                                     onClick={leaveQueue}
@@ -560,12 +562,12 @@ setCurrentRaid(null);
                                 >
                                     <div className="bg-gradient-to-r from-[#00FF88] to-[#00DD77] rounded-xl p-6 border-2 border-[#00FF88] shadow-2xl shadow-[#00FF88]/50">
                                         <h3 className="text-3xl font-bold text-black mb-2 font-retro">
-                                            BATTLE STARTING!
+                                            {t.bossQueue.battleStarting}
                                         </h3>
                                         <div className="text-6xl font-bold text-black mb-2 font-retro">
                                             {countdown}
                                         </div>
-                                        <p className="text-black font-retro">Get ready, heroes!</p>
+                                        <p className="text-black font-retro">{t.bossQueue.getReady}</p>
                                     </div>
                                 </motion.div>
                             )}
@@ -573,11 +575,11 @@ setCurrentRaid(null);
 
                         {/* Party Chat */}
                         <div className="bg-black border-2 border-[#00FF88] rounded-xl p-4">
-                            <h4 className="font-bold font-retro text-[#00FF88] mb-3">💬 Party Chat</h4>
+                            <h4 className="font-bold font-retro text-[#00FF88] mb-3">{t.bossQueue.partyChat}</h4>
                             <div className="bg-black border border-[#00FF88]/30 rounded-lg p-3 h-32 overflow-y-auto mb-3">
                                 {partyChatMessages.length === 0 ? (
                                     <p className="text-xs text-gray-500 text-center font-retro">
-                                        Waiting for party messages...
+                                        {t.bossQueue.waitingForMessages}
                                     </p>
                                 ) : (
                                     <div className="space-y-2">
@@ -598,7 +600,7 @@ setCurrentRaid(null);
                                     value={chatInput}
                                     onChange={(e) => setChatInput(e.target.value)}
                                     onKeyPress={(e) => e.key === 'Enter' && sendChatMessage()}
-                                    placeholder="Type a message..."
+                                    placeholder={t.bossQueue.typeMessage}
                                     className="flex-1 bg-black border border-[#00FF88]/30 rounded px-3 py-2 text-sm text-white font-retro focus:outline-none focus:border-[#00FF88]"
                                 />
                                 <button

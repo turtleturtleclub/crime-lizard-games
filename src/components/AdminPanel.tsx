@@ -2,9 +2,9 @@ import React, { useState, useEffect, useContext } from 'react';
 import { ethers } from 'ethers';
 import { toast } from 'react-toastify';
 import { motion } from 'framer-motion';
-import { SLOTS_V9_ABI } from '../slotsV9Abi';
+import { SLOTS_V11_ABI } from '../slotsV11Abi';
 import { CHARACTER_CONTRACT_ABI } from '../characterAbi';
-import { GOLD_CONTRACT_ABI } from '../goldAbi';
+import { GOLD_CONTRACT_ABI } from '../goldV7Abi';
 import { WalletContext } from '../providers/WalletContext';
 import { getContractAddress } from '../config/contracts';
 import TelegramIntegration from './TelegramIntegration';
@@ -109,7 +109,7 @@ const AdminPanel: React.FC = () => {
 
     const initializeContract = async () => {
         try {
-            const contract = new ethers.Contract(contractAddress, SLOTS_V9_ABI, provider);
+            const contract = new ethers.Contract(contractAddress, SLOTS_V11_ABI, provider);
             const owner = await contract.owner();
 
             // Admin wallets that can access the panel
@@ -172,7 +172,7 @@ const AdminPanel: React.FC = () => {
     };
 
     const testContractConnection = async () => {
-        const contract = new ethers.Contract(contractAddress, SLOTS_V9_ABI, provider);
+        const contract = new ethers.Contract(contractAddress, SLOTS_V11_ABI, provider);
         const owner = await contract.owner();
         const minBet = await contract.minBetSize();
         const maxBet = await contract.maxBetSize();
@@ -180,7 +180,7 @@ const AdminPanel: React.FC = () => {
     };
 
     const testBetLimits = async () => {
-        const contract = new ethers.Contract(contractAddress, SLOTS_V9_ABI, provider);
+        const contract = new ethers.Contract(contractAddress, SLOTS_V11_ABI, provider);
         const minBet = await contract.minBetSize();
         const maxBet = await contract.maxBetSize();
 
@@ -192,7 +192,7 @@ const AdminPanel: React.FC = () => {
     };
 
     const testBalanceChecks = async () => {
-        const contract = new ethers.Contract(contractAddress, SLOTS_V9_ABI, provider);
+        const contract = new ethers.Contract(contractAddress, SLOTS_V11_ABI, provider);
         const balance = await provider!.getBalance(contractAddress);
         const jackpot = await contract.jackpot();
 
@@ -205,7 +205,7 @@ const AdminPanel: React.FC = () => {
     const testOwnerFunctions = async () => {
         if (!signer) throw new Error('No signer available');
 
-        const contract = new ethers.Contract(contractAddress, SLOTS_V9_ABI, signer);
+        const contract = new ethers.Contract(contractAddress, SLOTS_V11_ABI, signer);
         const owner = await contract.owner();
 
         if (owner.toLowerCase() !== account!.toLowerCase()) {
@@ -225,7 +225,7 @@ const AdminPanel: React.FC = () => {
     };
 
     const testGameLogic = async () => {
-        const contract = new ethers.Contract(contractAddress, SLOTS_V9_ABI, provider);
+        const contract = new ethers.Contract(contractAddress, SLOTS_V11_ABI, provider);
 
         // Test payout calculation with sample reels
         const testReels = [0, 0, 0, 1, 2]; // 3 of a kind
@@ -240,7 +240,7 @@ const AdminPanel: React.FC = () => {
     const testGasEfficiency = async () => {
         if (!signer) throw new Error('No signer available');
 
-        const contract = new ethers.Contract(contractAddress, SLOTS_V9_ABI, signer);
+        const contract = new ethers.Contract(contractAddress, SLOTS_V11_ABI, signer);
         const testBet = ethers.parseEther('0.001');
 
         // Estimate gas for a spin request
@@ -402,7 +402,7 @@ const AdminPanel: React.FC = () => {
         if (!signer || !isOwner) return;
 
         try {
-const contract = new ethers.Contract(contractAddress, SLOTS_V9_ABI, signer);
+const contract = new ethers.Contract(contractAddress, SLOTS_V11_ABI, signer);
             const availableForWithdraw = ethers.parseEther(contractBalance) - ethers.parseEther('0.1'); // Preserve jackpot
 
             if (ethers.parseEther(withdrawAmount) > availableForWithdraw) {
@@ -434,7 +434,7 @@ const contract = new ethers.Contract(contractAddress, SLOTS_V9_ABI, signer);
         if (!signer || !isOwner) return;
 
         try {
-const contract = new ethers.Contract(contractAddress, SLOTS_V9_ABI, signer);
+const contract = new ethers.Contract(contractAddress, SLOTS_V11_ABI, signer);
 
             const value = ethers.parseEther(depositAmount);
 
@@ -463,7 +463,7 @@ const contract = new ethers.Contract(contractAddress, SLOTS_V9_ABI, signer);
         if (!signer || !isOwner) return;
 
         try {
-const contract = new ethers.Contract(contractAddress, SLOTS_V9_ABI, signer);
+const contract = new ethers.Contract(contractAddress, SLOTS_V11_ABI, signer);
 
             // Estimate gas and add buffer for admin operations
             let gasEstimate: bigint;

@@ -19,6 +19,15 @@ const ArmorShop: React.FC<ArmorShopProps> = ({ player, updatePlayer, onClose, se
     const { refreshQuests } = useQuests();
     const armorList = Object.values(ARMOR);
 
+    // Helper to get translated armor name/description
+    const getArmorText = (armor: Armor, field: 'name' | 'description') => {
+        const armorTranslations = (t as any).armor;
+        if (armorTranslations && armorTranslations[armor.id]) {
+            return armorTranslations[armor.id][field] || armor[field];
+        }
+        return armor[field];
+    };
+
     // Handle ESC key and mobile back button
     useModalClose(onClose);
 
@@ -51,7 +60,7 @@ const response = await fetch('/api/legend/sync-to-blockchain', {
         // Validate player data first
         if (!player.walletAddress || player.tokenId === undefined || player.tokenId === null) {
             console.error('❌ Missing player data:', { walletAddress: player.walletAddress, tokenId: player.tokenId });
-            setGameMessage('⚠️ Error: Missing player data. Please refresh the page and try again.');
+            setGameMessage(`⚠️ ${t.goblinHoard.missingPlayerData}`);
             return;
         }
 
@@ -70,13 +79,13 @@ const response = await fetch('/api/legend/sync-to-blockchain', {
         const alreadyOwned = currentInventory.some(item => item.id === armor.id && item.itemType === 'armor');
 
         if (alreadyOwned) {
-            setGameMessage('⚠️ You already own this armor! Check your inventory to equip it.');
+            setGameMessage(`⚠️ ${t.goblinHoard.alreadyOwnArmor}`);
             return;
         }
 
         // Check inventory space
         if (currentInventory.length >= player.maxInventorySlots) {
-            setGameMessage('⚠️ Your inventory is full! Sell or use some items first.');
+            setGameMessage(`⚠️ ${t.goblinHoard.inventoryFull}`);
             return;
         }
 
@@ -119,13 +128,13 @@ const response = await fetch('/api/legend/shop/buy-equipment', {
 
             // Refresh quests to check for quest completion (e.g., "Dress for Success")
             await refreshQuests();
-setGameMessage(`✅ ${armor.name} added to your inventory! Open your Character Profile to equip it.`);
+            setGameMessage(`✅ ${t.armorShop.purchaseSuccess.replace('{name}', getArmorText(armor, 'name'))}`);
 
             // Close shop after successful purchase
             setTimeout(() => onClose(), 2000);
         } catch (error) {
             console.error('Purchase error:', error);
-            setGameMessage(`❌ Failed to purchase armor: ${error instanceof Error ? error.message : 'Unknown error'}`);
+            setGameMessage(`❌ ${t.armorShop.purchaseFailed.replace('{error}', error instanceof Error ? error.message : 'Unknown error')}`);
         }
     };
 
@@ -172,9 +181,9 @@ setGameMessage(`✅ ${armor.name} added to your inventory! Open your Character P
                         <div className="flex justify-between items-center">
                             <div>
                                 <div className={`font-bold ${getRarityColor(player.armor.rarity)}`}>
-                                    {player.armor.name}
+                                    {getArmorText(player.armor, 'name')}
                                 </div>
-                                <div className="text-sm text-gray-400">{player.armor.description}</div>
+                                <div className="text-sm text-gray-400">{getArmorText(player.armor, 'description')}</div>
                             </div>
                             <div className="text-right">
                                 <div className="text-blue-400 font-bold">+{player.armor.defenseBonus} DEF</div>
@@ -209,17 +218,17 @@ setGameMessage(`✅ ${armor.name} added to your inventory! Open your Character P
                                 <div className="flex justify-between items-start mb-2">
                                     <div>
                                         <div className={`font-bold ${getRarityColor(armor.rarity)}`}>
-                                            {armor.name}
+                                            {getArmorText(armor, 'name')}
                                         </div>
-                                        <div className="text-xs text-gray-400">Level {armor.minLevel}+</div>
+                                        <div className="text-xs text-gray-400">{t.armorShop.levelRequired.replace('{level}', String(armor.minLevel))}</div>
                                     </div>
                                     <div className="text-right">
                                         <div className="text-blue-400 font-bold">+{armor.defenseBonus}</div>
-                                        <div className="text-xs text-gray-400">DEF</div>
+                                        <div className="text-xs text-gray-400">{t.armorShop.def}</div>
                                     </div>
                                 </div>
 
-                                <p className="text-sm text-gray-300 mb-3">{armor.description}</p>
+                                <p className="text-sm text-gray-300 mb-3">{getArmorText(armor, 'description')}</p>
 
                                 <div className="flex justify-between items-center">
                                     <div className="text-yellow-500 font-bold">{armor.price} 💰</div>
@@ -229,7 +238,7 @@ setGameMessage(`✅ ${armor.name} added to your inventory! Open your Character P
                                         </div>
                                     ) : isOwned ? (
                                         <div className="px-3 py-1 bg-blue-900 border border-blue-500 text-blue-500 text-sm font-bold">
-                                            OWNED
+                                            {t.armorShop.owned}
                                         </div>
                                     ) : (
                                         <button
@@ -260,7 +269,7 @@ setGameMessage(`✅ ${armor.name} added to your inventory! Open your Character P
                     onClick={onClose}
                     className="w-full py-3 bg-black border-2 border-gray-600 text-gray-400 hover:bg-black font-bold"
                 >
-                    [ESC] Close
+                    {t.armorShop.escClose}
                 </button>
             </motion.div>
         </motion.div>

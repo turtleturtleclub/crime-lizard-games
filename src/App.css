@@ -736,12 +736,20 @@ main {
 }
 
 /* Modern Button Effects */
-button {
+button:not(.header-btn) {
   transition: transform 0.2s ease, box-shadow 0.2s ease;
   cursor: pointer;
   min-height: 44px; /* Accessible touch target */
   /* Let individual button classes control background and color */
   /* Border radius removed - let individual components control rounding */
+}
+
+/* Header buttons need smaller sizing */
+button.header-btn {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  cursor: pointer;
+  min-height: auto;
+  min-width: auto;
 }
 
 button:hover:not(:disabled) {
@@ -1113,9 +1121,16 @@ input[type="number"] {
   }
 
   /* Improve button touch targets on mobile */
-  button, input[type="button"], input[type="submit"] {
+  button:not(.header-btn), input[type="button"], input[type="submit"] {
     min-height: 44px !important;
     min-width: 44px !important;
+    touch-action: manipulation;
+  }
+
+  /* Header buttons exempt from touch target sizing */
+  button.header-btn {
+    min-height: auto !important;
+    min-width: auto !important;
     touch-action: manipulation;
   }
 

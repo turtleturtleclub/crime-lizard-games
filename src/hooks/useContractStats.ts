@@ -1,6 +1,6 @@
 import { useState, useEffect, useContext } from 'react';
 import { WalletContext } from '../providers/WalletContext';
-import { SLOTS_V9_ABI } from '../slotsV9Abi';
+import { SLOTS_V11_ABI } from '../slotsV11Abi';
 import { getNetworkConfig, getContractAddress } from '../config/contracts';
 import { getRpcProvider } from '../services/RpcProvider';
 
@@ -49,7 +49,7 @@ export const useContractStats = (): ContractStats => {
                 }
 
                 // Use Slots V4 ABI only
-                const contractABI = SLOTS_V9_ABI;
+                const contractABI = SLOTS_V11_ABI;
 
                 // Use private RPC provider for read-only operations
                 // This avoids rate limiting and uses our private RPC endpoint

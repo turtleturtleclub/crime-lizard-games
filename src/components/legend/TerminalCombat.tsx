@@ -368,8 +368,11 @@ const TerminalCombat: React.FC<TerminalCombatProps> = ({ player, updatePlayer, s
             addLog(`🔶 ${t.legend.combatMessages.czEscapes}`);
             addLog(t.legend.combatMessages.czQuote);
 
-            // CZ always drops 777 gold and his items
-            const goldEarned = 777;
+            // CZ drops gold from his enemy data (capped at 500 for economy balance)
+            const goldEarned = Math.min(
+                Math.floor(Math.random() * (currentEnemy.goldMax - currentEnemy.goldMin + 1) + currentEnemy.goldMin),
+                500
+            );
             const expEarned = currentEnemy.experienceReward;
 
             addLog(``);
@@ -396,13 +399,15 @@ const TerminalCombat: React.FC<TerminalCombatProps> = ({ player, updatePlayer, s
             return;
         }
 
-        // Enemy counter-attacks
-        await enemyCounterAttack();
+        // Enemy counter-attacks - pass the current health to avoid stale state issues
+        await enemyCounterAttack(newEnemyHealth);
         setIsAttacking(false);
     };
 
-    const enemyCounterAttack = async () => {
-        if (!currentEnemy || enemyHealth <= 0) return;
+    const enemyCounterAttack = async (currentEnemyHP?: number) => {
+        // Use passed health value if available (to avoid stale state after player attack)
+        const actualEnemyHealth = currentEnemyHP ?? enemyHealth;
+        if (!currentEnemy || actualEnemyHealth <= 0) return;
 
         // Check if enemy is stunned
         if (enemyStunned) {
@@ -417,7 +422,7 @@ const TerminalCombat: React.FC<TerminalCombatProps> = ({ player, updatePlayer, s
 
         // Check for enemy special ability triggers
         if (currentEnemy.specialAbility && Math.random() * 100 < (currentEnemy.specialAbility.chance || 0)) {
-            await handleEnemySpecialAbility();
+            await handleEnemySpecialAbility(actualEnemyHealth);
         }
 
         // Calculate final damage
@@ -442,10 +447,17 @@ const TerminalCombat: React.FC<TerminalCombatProps> = ({ player, updatePlayer, s
         // Apply thorns damage if armor has it
         if (player.armor?.advantages?.thorns) {
             const thornsDamage = player.armor.advantages.thorns;
-            const newEnemyHP = Math.max(0, enemyHealth - thornsDamage);
+            const newEnemyHP = Math.max(0, actualEnemyHealth - thornsDamage);
             setEnemyHealth(newEnemyHP);
             const enemyName = t.legend.enemies[currentEnemy.id]?.name || currentEnemy.name;
             addLog(t.legend.combatMessages.thorns.replace('{enemy}', enemyName).replace('{damage}', thornsDamage.toString()));
+
+            // Check if thorns killed the enemy
+            if (newEnemyHP <= 0) {
+                addLog(`💀 ${enemyName} was killed by thorns damage!`);
+                await handleEnemyDefeated();
+                return;
+            }
         }
 
         addLog(`<<< ${t.legend.combat.strikesBackFor.replace('{enemy}', currentEnemy.name).replace('{damage}', enemyDamage.toString())}`);
@@ -503,7 +515,7 @@ const TerminalCombat: React.FC<TerminalCombatProps> = ({ player, updatePlayer, s
         }
     };
 
-    const handleEnemySpecialAbility = async () => {
+    const handleEnemySpecialAbility = async (currentEnemyHP: number) => {
         if (!currentEnemy?.specialAbility) return;
 
         const ability = currentEnemy.specialAbility;
@@ -530,9 +542,9 @@ const TerminalCombat: React.FC<TerminalCombatProps> = ({ player, updatePlayer, s
                 break;
 
             case 'dark_forest_troll':
-                // Regeneration
+                // Regeneration - use passed health value to avoid stale state
                 const healAmount = 5;
-                const newHP = Math.min(currentEnemy.maxHealth, enemyHealth + healAmount);
+                const newHP = Math.min(currentEnemy.maxHealth, currentEnemyHP + healAmount);
                 setEnemyHealth(newHP);
                 addLog(t.legend.combatMessages.regenerates.replace('{enemy}', enemyName).replace('{amount}', healAmount.toString()));
                 break;
@@ -555,7 +567,7 @@ const TerminalCombat: React.FC<TerminalCombatProps> = ({ player, updatePlayer, s
 
             case 'ogre_whale':
                 // Diamond Hands - bonus defense when low HP
-                if (enemyHealth < currentEnemy.maxHealth * 0.5) {
+                if (currentEnemyHP < currentEnemy.maxHealth * 0.5) {
                     addLog(t.legend.combatMessages.diamondHandsActive);
                 }
                 break;
@@ -588,7 +600,7 @@ const TerminalCombat: React.FC<TerminalCombatProps> = ({ player, updatePlayer, s
                 const shadowFlameDamage = currentEnemy.strength * 2;
                 const drainAmount = 10;
                 const shadowHealth = Math.max(0, player.health - shadowFlameDamage);
-                const wyrmnewHP = Math.min(currentEnemy.maxHealth, enemyHealth + drainAmount);
+                const wyrmnewHP = Math.min(currentEnemy.maxHealth, currentEnemyHP + drainAmount);
                 updatePlayer({ health: shadowHealth });
                 setEnemyHealth(wyrmnewHP);
                 addLog(t.legend.combatMessages.shadowFlame?.replace('{enemy}', enemyName).replace('{damage}', shadowFlameDamage.toString()) || `🖤 Shadow Flame! ${enemyName} deals ${shadowFlameDamage} dark damage!`);
@@ -621,7 +633,7 @@ const TerminalCombat: React.FC<TerminalCombatProps> = ({ player, updatePlayer, s
                 // Life Drain - steal 50 HP
                 const lifeDrainHP = Math.min(50, player.health);
                 const drainedHealth = Math.max(0, player.health - lifeDrainHP);
-                const demonNewHP = Math.min(currentEnemy.maxHealth, enemyHealth + lifeDrainHP);
+                const demonNewHP = Math.min(currentEnemy.maxHealth, currentEnemyHP + lifeDrainHP);
                 updatePlayer({ health: drainedHealth });
                 setEnemyHealth(demonNewHP);
                 addLog(t.legend.combatMessages.lifeDrain?.replace('{enemy}', enemyName).replace('{amount}', lifeDrainHP.toString()) || `🩸 Life Drain! ${enemyName} steals ${lifeDrainHP} HP!`);
@@ -677,8 +689,12 @@ const TerminalCombat: React.FC<TerminalCombatProps> = ({ player, updatePlayer, s
     const handleEnemyDefeated = async () => {
         if (!currentEnemy) return;
 
-        const goldEarned = Math.floor(
-            Math.random() * (currentEnemy.goldMax - currentEnemy.goldMin + 1) + currentEnemy.goldMin
+        // Economy rebalance v3.0: Cap gold at 100 to match server-side validation
+        // Gold Shop: 0.01 BNB (~$7) = 1,000 gold, so max 100 gold/combat = ~$0.70
+        const MAX_GOLD_PER_COMBAT = 100;
+        const goldEarned = Math.min(
+            Math.floor(Math.random() * (currentEnemy.goldMax - currentEnemy.goldMin + 1) + currentEnemy.goldMin),
+            MAX_GOLD_PER_COMBAT
         );
         const expEarned = currentEnemy.experienceReward;
 
@@ -707,9 +723,8 @@ const TerminalCombat: React.FC<TerminalCombatProps> = ({ player, updatePlayer, s
         // Check for item drops
         await handleItemDrop(currentEnemy);
 
-        // Update player stats
+        // Update player stats (optimistic update - will be corrected by server response)
         const newGold = player.gold + goldEarned;
-        let newExp = player.experience + expEarned;  // Changed to let for level up calculation
         const newHeists = player.heistsCompleted + 1;
         const newGoldStolen = player.goldStolen + goldEarned;
         // Calculate turn cost based on enemy level/type
@@ -717,19 +732,44 @@ const TerminalCombat: React.FC<TerminalCombatProps> = ({ player, updatePlayer, s
         const newTurns = Math.max(0, player.turnsRemaining - turnCost);
         const newEnemiesDefeated = player.enemiesDefeated + 1;
 
+        // 🔐 XP formula matching backend (xpHelpers.js) - REBALANCED Dec 10, 2025
+        // Level 20+ is NOW MUCH HARDER with exponential scaling
+        const getExpToNextLevel = (level: number): number => {
+            if (level < 20) {
+                // Early/mid-game: Linear progression
+                return 100 + ((level - 1) * 50);
+            } else if (level === 20) {
+                // Gateway level
+                return 1500;
+            } else if (level <= 30) {
+                // Levels 21-30: Exponential (1.25x per level)
+                return Math.floor(1500 * Math.pow(1.25, level - 20));
+            } else if (level <= 40) {
+                // Levels 31-40: Steeper exponential (1.35x per level)
+                const base30 = 1500 * Math.pow(1.25, 10);
+                return Math.floor(base30 * Math.pow(1.35, level - 30));
+            } else {
+                // Levels 41-50: Brutal endgame (1.5x per level)
+                const base30 = 1500 * Math.pow(1.25, 10);
+                const base40 = base30 * Math.pow(1.35, 10);
+                return Math.floor(base40 * Math.pow(1.5, level - 40));
+            }
+        };
+
         // Check for level up (handle multiple level ups if needed)
         let levelUp = false;
         let newLevel = player.level;
-        let expToNext = player.experienceToNextLevel;
-        let statUpdates: any = {};
+        let newExp = player.experience + expEarned;
+        let expToNext = getExpToNextLevel(newLevel);
+        let statUpdates: Partial<PlayerCharacter> = {};
 
-        while (newExp >= expToNext) {
+        while (newExp >= expToNext && newLevel < 100) {
             // Subtract the XP needed for this level
             newExp = newExp - expToNext;
 
             // Level up
             newLevel = newLevel + 1;
-            expToNext = Math.floor(expToNext * 1.5);
+            expToNext = getExpToNextLevel(newLevel);  // 🔐 FIX: Use correct formula
             levelUp = true;
 
             addLog(``);
@@ -737,17 +777,18 @@ const TerminalCombat: React.FC<TerminalCombatProps> = ({ player, updatePlayer, s
             addLog(t.legend.combat.youAreNowLevel.replace('{level}', newLevel.toString()));
             addLog(t.legend.combat.levelUpBonus);
 
-            // Add stat bonuses for each level
+            // Add stat bonuses for each level (matching backend: +10 HP, +2 STR/DEF/CHR)
             const healthBonus = (statUpdates.maxHealth || player.maxHealth) + 10;
             statUpdates = {
                 maxHealth: healthBonus,
                 health: healthBonus,
                 strength: (statUpdates.strength || player.strength) + 2,
                 defense: (statUpdates.defense || player.defense) + 2,
-                charm: (statUpdates.charm || player.charm) + 1  // BALANCED: +1 charm per level (not +2!)
+                charm: (statUpdates.charm || player.charm) + 2  // 🔐 FIX: +2 to match backend
             };
         }
 
+        // Optimistic update (will be corrected by server response if different)
         updatePlayer({
             gold: newGold,
             experience: newExp,
@@ -1022,7 +1063,36 @@ await refreshQuests();
                     console.error(`❌ Combat save failed (${response.status}):`, errorData);
                 }
             } else {
-}
+                // 🔐 FIX: Use server's authoritative response to correct local state
+                // This prevents XP/level desync between frontend and backend
+                const serverData = await response.json().catch(() => null);
+                if (serverData && serverData.player) {
+                    // Server returned authoritative player state - use it!
+                    const serverPlayer = serverData.player;
+                    const corrections: Partial<PlayerCharacter> = {};
+
+                    // Only apply corrections if server values differ significantly
+                    if (serverPlayer.level !== undefined && serverPlayer.level !== player.level) {
+                        corrections.level = serverPlayer.level;
+                        console.log(`🔄 Level corrected: ${player.level} → ${serverPlayer.level}`);
+                    }
+                    if (serverPlayer.experience !== undefined && Math.abs(serverPlayer.experience - player.experience) > 10) {
+                        corrections.experience = serverPlayer.experience;
+                        console.log(`🔄 XP corrected: ${player.experience} → ${serverPlayer.experience}`);
+                    }
+                    if (serverPlayer.experienceToNextLevel !== undefined) {
+                        corrections.experienceToNextLevel = serverPlayer.experienceToNextLevel;
+                    }
+                    if (serverPlayer.totalGameXP !== undefined) {
+                        corrections.totalGameXP = serverPlayer.totalGameXP;
+                    }
+
+                    // Apply corrections if any
+                    if (Object.keys(corrections).length > 0) {
+                        updatePlayer(corrections);
+                    }
+                }
+            }
         } catch (error) {
             console.error('❌ Failed to save combat result:', error);
             // Don't show error to user - combat still works locally

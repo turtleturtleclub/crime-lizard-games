@@ -2,9 +2,9 @@ import React, { useState, useEffect, useContext } from 'react';
 import { ethers } from 'ethers';
 import { motion } from 'framer-motion';
 import { WalletContext } from '../providers/WalletContext';
-import { GOLD_CONTRACT_ABI } from '../goldAbi';
+import { GOLD_CONTRACT_ABI } from '../goldV7Abi';
 import { CHARACTER_CONTRACT_ABI } from '../characterAbi';
-import { SLOTS_V9_ABI } from '../slotsV9Abi';
+import { SLOTS_V11_ABI } from '../slotsV11Abi';
 import { getContractAddress } from '../config/contracts';
 import { getRpcProvider } from '../services/RpcProvider';
 
@@ -70,8 +70,8 @@ const ContractStatusChecker: React.FC = () => {
         // Check Slots Contract using private RPC
         try {
             const [jackpot, owner] = await rpcProvider.batchReadContracts([
-                { contractAddress: SLOTS_ADDRESS, abi: SLOTS_V9_ABI, method: 'jackpot' },
-                { contractAddress: SLOTS_ADDRESS, abi: SLOTS_V9_ABI, method: 'owner' }
+                { contractAddress: SLOTS_ADDRESS, abi: SLOTS_V11_ABI, method: 'jackpot' },
+                { contractAddress: SLOTS_ADDRESS, abi: SLOTS_V11_ABI, method: 'owner' }
             ]);
             newStatuses.push({
                 address: SLOTS_ADDRESS,
@@ -149,8 +149,8 @@ const ContractStatusChecker: React.FC = () => {
         try {
             // Check all contract linkages using private RPC
             const [slotsCharacterNFT, slotsGoldContract, goldCharacterNFT] = await rpcProvider.batchReadContracts([
-                { contractAddress: SLOTS_ADDRESS, abi: SLOTS_V9_ABI, method: 'characterNFT' },
-                { contractAddress: SLOTS_ADDRESS, abi: SLOTS_V9_ABI, method: 'goldContract' },
+                { contractAddress: SLOTS_ADDRESS, abi: SLOTS_V11_ABI, method: 'characterNFT' },
+                { contractAddress: SLOTS_ADDRESS, abi: SLOTS_V11_ABI, method: 'goldContract' },
                 { contractAddress: GOLD_ADDRESS, abi: GOLD_CONTRACT_ABI, method: 'characterNFT' }
             ]);
 

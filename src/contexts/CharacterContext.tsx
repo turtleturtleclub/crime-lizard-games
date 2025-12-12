@@ -3,8 +3,8 @@ import type { ReactNode } from 'react';
 import { ethers } from 'ethers';
 import { WalletContext } from '../providers/WalletContext';
 import { CHARACTER_CONTRACT_ABI } from '../characterAbi';
-import { GOLD_CONTRACT_ABI } from '../goldAbi';
-import { SLOTS_V9_ABI } from '../slotsV9Abi';
+import { GOLD_CONTRACT_ABI } from '../goldV7Abi';
+import { SLOTS_V11_ABI } from '../slotsV11Abi';
 import { getContractAddress } from '../config/contracts';
 import { toast } from 'react-toastify';
 import { getRpcProvider } from '../services/RpcProvider';
@@ -105,7 +105,7 @@ export const CharacterProvider = ({ children }: CharacterProviderProps) => {
             // Initialize Slots Contract (using centralized config)
             const slotsAddress = getContractAddress(targetChainId, 'slots');
             if (slotsAddress && slotsAddress !== '0x0000000000000000000000000000000000000000') {
-                const slContract = new ethers.Contract(slotsAddress, SLOTS_V9_ABI, provider);
+                const slContract = new ethers.Contract(slotsAddress, SLOTS_V11_ABI, provider);
                 setSlotsContract(slContract);
             }
         } catch (error) {
@@ -394,7 +394,7 @@ const tokenIds = await rpcProvider.readContract(
                 try {
                     currentSelection = await rpcProvider.readContract(
                         slotsAddress,
-                        SLOTS_V9_ABI,
+                        SLOTS_V11_ABI,
                         'getActiveCharacter',
                         [signerAddress]
                     );

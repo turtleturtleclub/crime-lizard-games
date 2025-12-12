@@ -1,10 +1,10 @@
 /**
- * @title CrimeLizardDice Contract ABI
- * @notice Fair dice game contract for Crime Lizard ecosystem
- * @dev Uses instant on-chain randomness with tournament support
+ * @title CrimeLizardDiceV7 Contract ABI
+ * @notice Dice game contract for Crime Lizard ecosystem
+ * @dev Server-signed randomness with upgradeable gold contract
  */
 
-export const DICE_V5_ABI = [
+export const DICE_V7_ABI = [
   {
     "inputs": [
       {
@@ -16,10 +16,42 @@ export const DICE_V5_ABI = [
         "internalType": "address",
         "name": "_goldContract",
         "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "_randomnessSigner",
+        "type": "address"
       }
     ],
     "stateMutability": "nonpayable",
     "type": "constructor"
+  },
+  {
+    "inputs": [],
+    "name": "ECDSAInvalidSignature",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "length",
+        "type": "uint256"
+      }
+    ],
+    "name": "ECDSAInvalidSignatureLength",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "s",
+        "type": "bytes32"
+      }
+    ],
+    "name": "ECDSAInvalidSignatureS",
+    "type": "error"
   },
   {
     "inputs": [],
@@ -43,17 +75,27 @@ export const DICE_V5_ABI = [
   },
   {
     "inputs": [],
-    "name": "InvalidCharacter",
-    "type": "error"
-  },
-  {
-    "inputs": [],
     "name": "InvalidMultiplier",
     "type": "error"
   },
   {
     "inputs": [],
+    "name": "InvalidSignature",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "InvalidSigner",
+    "type": "error"
+  },
+  {
+    "inputs": [],
     "name": "NoActiveCharacter",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "NonceAlreadyUsed",
     "type": "error"
   },
   {
@@ -250,6 +292,25 @@ export const DICE_V5_ABI = [
       {
         "indexed": true,
         "internalType": "address",
+        "name": "oldContract",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "newContract",
+        "type": "address"
+      }
+    ],
+    "name": "GoldContractUpdated",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
         "name": "player",
         "type": "address"
       },
@@ -348,124 +409,7 @@ export const DICE_V5_ABI = [
         "type": "address"
       },
       {
-        "indexed": false,
-        "internalType": "uint256",
-        "name": "totalRolls",
-        "type": "uint256"
-      },
-      {
-        "indexed": false,
-        "internalType": "uint256",
-        "name": "totalWagered",
-        "type": "uint256"
-      },
-      {
-        "indexed": false,
-        "internalType": "uint256",
-        "name": "totalWon",
-        "type": "uint256"
-      },
-      {
-        "indexed": false,
-        "internalType": "uint256",
-        "name": "timestamp",
-        "type": "uint256"
-      }
-    ],
-    "name": "PlayerStatsUpdated",
-    "type": "event"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      {
-        "indexed": false,
-        "internalType": "uint256",
-        "name": "newRTP",
-        "type": "uint256"
-      },
-      {
-        "indexed": false,
-        "internalType": "uint256",
-        "name": "totalRolls",
-        "type": "uint256"
-      },
-      {
-        "indexed": false,
-        "internalType": "uint256",
-        "name": "totalAmountSpent",
-        "type": "uint256"
-      },
-      {
-        "indexed": false,
-        "internalType": "uint256",
-        "name": "totalWon",
-        "type": "uint256"
-      },
-      {
-        "indexed": false,
-        "internalType": "uint256",
-        "name": "timestamp",
-        "type": "uint256"
-      }
-    ],
-    "name": "RTPUpdated",
-    "type": "event"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      {
         "indexed": true,
-        "internalType": "uint64",
-        "name": "sequenceNumber",
-        "type": "uint64"
-      },
-      {
-        "indexed": true,
-        "internalType": "address",
-        "name": "player",
-        "type": "address"
-      },
-      {
-        "indexed": false,
-        "internalType": "uint256",
-        "name": "characterId",
-        "type": "uint256"
-      },
-      {
-        "indexed": false,
-        "internalType": "uint256",
-        "name": "betAmount",
-        "type": "uint256"
-      },
-      {
-        "indexed": false,
-        "internalType": "uint256",
-        "name": "timestamp",
-        "type": "uint256"
-      }
-    ],
-    "name": "RollRequested",
-    "type": "event"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      {
-        "indexed": true,
-        "internalType": "address",
-        "name": "player",
-        "type": "address"
-      },
-      {
-        "indexed": true,
-        "internalType": "uint64",
-        "name": "sequenceNumber",
-        "type": "uint64"
-      },
-      {
-        "indexed": false,
         "internalType": "uint256",
         "name": "characterId",
         "type": "uint256"
@@ -503,6 +447,18 @@ export const DICE_V5_ABI = [
       {
         "indexed": false,
         "internalType": "uint256",
+        "name": "betAmount",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "bytes32",
+        "name": "nonce",
+        "type": "bytes32"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
         "name": "timestamp",
         "type": "uint256"
       }
@@ -516,35 +472,17 @@ export const DICE_V5_ABI = [
       {
         "indexed": true,
         "internalType": "address",
-        "name": "player",
+        "name": "oldSigner",
         "type": "address"
       },
       {
         "indexed": true,
-        "internalType": "uint256",
-        "name": "characterId",
-        "type": "uint256"
-      },
-      {
-        "indexed": false,
-        "internalType": "uint256",
-        "name": "goldAmount",
-        "type": "uint256"
-      },
-      {
-        "indexed": false,
-        "internalType": "uint256",
-        "name": "rollCount",
-        "type": "uint256"
-      },
-      {
-        "indexed": false,
-        "internalType": "uint256",
-        "name": "timestamp",
-        "type": "uint256"
+        "internalType": "address",
+        "name": "newSigner",
+        "type": "address"
       }
     ],
-    "name": "TournamentContribution",
+    "name": "SignerUpdated",
     "type": "event"
   },
   {
@@ -866,7 +804,7 @@ export const DICE_V5_ABI = [
             "type": "uint256"
           }
         ],
-        "internalType": "struct CrimeLizardDiceV5.DailyStats",
+        "internalType": "struct CrimeLizardDiceV7.DailyStats",
         "name": "",
         "type": "tuple"
       }
@@ -970,7 +908,7 @@ export const DICE_V5_ABI = [
             "type": "uint256[11]"
           }
         ],
-        "internalType": "struct CrimeLizardDiceV5.PlayerStats",
+        "internalType": "struct CrimeLizardDiceV7.PlayerStats",
         "name": "",
         "type": "tuple"
       }
@@ -1040,7 +978,7 @@ export const DICE_V5_ABI = [
             "type": "uint256"
           }
         ],
-        "internalType": "struct CrimeLizardDiceV5.WeeklyStats",
+        "internalType": "struct CrimeLizardDiceV7.WeeklyStats",
         "name": "",
         "type": "tuple"
       }
@@ -1276,6 +1214,19 @@ export const DICE_V5_ABI = [
     "type": "function"
   },
   {
+    "inputs": [],
+    "name": "randomnessSigner",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
     "inputs": [
       {
         "internalType": "uint256",
@@ -1283,9 +1234,19 @@ export const DICE_V5_ABI = [
         "type": "uint256"
       },
       {
+        "internalType": "uint256",
+        "name": "randomSeed",
+        "type": "uint256"
+      },
+      {
         "internalType": "bytes32",
-        "name": "userRandomSeed",
+        "name": "nonce",
         "type": "bytes32"
+      },
+      {
+        "internalType": "bytes",
+        "name": "signature",
+        "type": "bytes"
       }
     ],
     "name": "roll",
@@ -1302,6 +1263,19 @@ export const DICE_V5_ABI = [
       }
     ],
     "name": "selectCharacter",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "newGoldContract",
+        "type": "address"
+      }
+    ],
+    "name": "setGoldContract",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
@@ -1390,6 +1364,19 @@ export const DICE_V5_ABI = [
     "type": "function"
   },
   {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "newSigner",
+        "type": "address"
+      }
+    ],
+    "name": "setSigner",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
     "inputs": [],
     "name": "stats",
     "outputs": [
@@ -1465,6 +1452,25 @@ export const DICE_V5_ABI = [
   {
     "inputs": [
       {
+        "internalType": "bytes32",
+        "name": "",
+        "type": "bytes32"
+      }
+    ],
+    "name": "usedNonces",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
         "internalType": "address",
         "name": "player",
         "type": "address"
@@ -1514,9 +1520,7 @@ export const DICE_V5_ABI = [
   }
 ] as const;
 
-/**
- * Dice V5 Contract Address - Mainnet only (BSC Chain ID 56)
- */
+// Mainnet only - BSC Chain ID 56
 export const DICE_CONTRACT_ADDRESS = {
-  mainnet: import.meta.env.VITE_DICE_V5_ADDRESS || "0x71eddE644B160CB95aB89e53d8F758c1E548a505"
+    mainnet: import.meta.env.VITE_DICE_MAINNET || "0x1385A045A3fD5A1602e44DB0068c31Af850f9335"
 } as const;

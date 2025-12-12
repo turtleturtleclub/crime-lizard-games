@@ -4,9 +4,9 @@
  * ═══════════════════════════════════════════════════════════
  */
 
-import { DICE_CONTRACT_ADDRESS } from '../diceV5Abi';
-import { SLOTS_CONTRACT_ADDRESS } from '../slotsV9Abi';
-import { GOLD_CONTRACT_ADDRESS } from '../goldAbi';
+import { DICE_CONTRACT_ADDRESS } from '../diceV7Abi';
+import { SLOTS_CONTRACT_ADDRESS } from '../slotsV11Abi';
+import { GOLD_CONTRACT_ADDRESS } from '../goldV7Abi';
 import { CHARACTER_CONTRACT_ADDRESS } from '../characterAbi';
 import { CLZD_TOKEN_ADDRESS } from '../clzdAbi';
 
