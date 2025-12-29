@@ -9,6 +9,7 @@ import { useLegendAI } from '../../services/LegendAI';
 import { useQuests } from '../../contexts/QuestContext';
 import { useModalClose } from '../../hooks/useModalClose';
 import GoldShop from './GoldShop';
+import SatchelShop from './SatchelShop';
 import ConfirmationModal from './ConfirmationModal';
 
 interface GoblinHoardProps {
@@ -70,6 +71,7 @@ const GoblinHoard: React.FC<GoblinHoardProps> = ({ player, updatePlayer, onClose
     const [depositing, setDepositing] = useState(false);
     const [withdrawing, setWithdrawing] = useState(false);
     const [showGoldShop, setShowGoldShop] = useState(false);
+    const [showClzdSwap, setShowClzdSwap] = useState(false);
     const [acceptingQuest, setAcceptingQuest] = useState(false);
     const [confirmModal, setConfirmModal] = useState<{
         isOpen: boolean;
@@ -1018,6 +1020,14 @@ if (response.ok && data.success) {
                         onClose={() => setShowGoldShop(false)}
                         onPurchase={handlePurchaseComplete}
                         tokenId={player.tokenId}
+                        onBuyClzd={() => setShowClzdSwap(true)}
+                    />
+                )}
+                {showClzdSwap && (
+                    <SatchelShop
+                        player={player}
+                        onClose={() => setShowClzdSwap(false)}
+                        setGameMessage={setGameMessage}
                     />
                 )}
             </AnimatePresence>
@@ -1210,6 +1220,23 @@ if (response.ok && data.success) {
                 {/* BANK TAB - Now first! */}
                 {activeTab === 'bank' && (
                     <>
+                        {/* Buy CLZD with BNB - TOP OF BANK */}
+                        <div className="bg-black border-2 border-[#00FF88] p-4 mb-4">
+                            <h3 className="font-bold text-[#00FF88] mb-3 text-lg">
+                                🦎 Buy $CLZD with BNB
+                            </h3>
+                            <p className="text-sm text-gray-400 mb-4">
+                                Buy CLZD tokens directly with BNB via PancakeSwap!
+                            </p>
+
+                            <button
+                                onClick={() => setShowClzdSwap(true)}
+                                className="w-full py-3 bg-[#00AA55] border-2 border-[#00FF88] text-[#00FF88] font-bold hover:bg-[#00BB66] transition-all text-lg"
+                            >
+                                🦎 BUY $CLZD 🦎
+                            </button>
+                        </div>
+
                         {/* Deposit */}
                         <div className="bg-black border border-[#00FF88] p-4 mb-3">
                             <h3 className="font-bold text-[#00FF88] mb-3">{t.legend.shops.depositGold}</h3>

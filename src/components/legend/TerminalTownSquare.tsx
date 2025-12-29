@@ -8,6 +8,7 @@ import TerminalInput from './TerminalInput';
 import Healer from './Healer';
 import GoblinHoard from './GoblinHoard';
 import PoorDistrict from './PoorDistrict';
+import CityDistrict from './CityDistrict';
 import GoldShop from './GoldShop';
 import BossQueue, { type BossRaid } from './BossQueue';
 import SaveStatePurchase from './SaveStatePurchase';
@@ -133,6 +134,9 @@ const TerminalTownSquare: React.FC<TerminalTownSquareProps> = ({
                     break;
                 case 'poor_district':
                     setSelectedLocation('poor_district');
+                    break;
+                case 'city_district':
+                    setSelectedLocation('city_district');
                     break;
                 case 'casino':
                     setSelectedLocation('casino');
@@ -285,8 +289,9 @@ const TerminalTownSquare: React.FC<TerminalTownSquareProps> = ({
         if (['bug', 'bugreport', 'report', 'feature', '错误', '錯誤', '报告', '報告', '🐛'].includes(lowerCmd) || lowerCmd === '14') return () => setShowBugReport(true);
         if (['gecko', 'graves', 'geckograves', 'pete', 'shadypete', 'shady', 'npc', '皮特', '🎩', '🦎'].includes(lowerCmd)) return () => setShowShadyPete(true);
         if (['rekt', 'rektdistrict', 'sonic', 'donate', '帮助', '捐赠', '💀'].includes(lowerCmd) || lowerCmd === '15') return () => setSelectedLocation('poor_district');
-        if (['rich', '富人区', '富人區'].includes(lowerCmd) || lowerCmd === '16') return () => handleRichDistrict();
-        if (['crimelord', '犯罪头目', '犯罪頭目', '头目', '頭目'].includes(lowerCmd) || lowerCmd === '17') return () => handleCrimeLordLair();
+        if (['city', 'citydistrict', 'corrupt', 'bribe', '城市', '城市区', '🏛️'].includes(lowerCmd) || lowerCmd === '16') return () => setSelectedLocation('city_district');
+        if (['rich', '富人区', '富人區'].includes(lowerCmd) || lowerCmd === '17') return () => handleRichDistrict();
+        if (['crimelord', '犯罪头目', '犯罪頭目', '头目', '頭目'].includes(lowerCmd) || lowerCmd === '18') return () => handleCrimeLordLair();
 
         // Other commands (English & Mandarin)
         if (['gold', 'buygold', 'bnb', '金币', '金幣'].includes(lowerCmd)) return () => setShowGoldShop(true);
@@ -346,8 +351,9 @@ const TerminalTownSquare: React.FC<TerminalTownSquareProps> = ({
         addOutput(`  13. ${language === 'zh' ? '任务' : 'QUESTS'}    - ${language === 'zh' ? '查看并接受可用任务' : 'View and accept available quests'}`);
         addOutput(`  14. ${language === 'zh' ? '错误报告' : 'BUG'}      - ${language === 'zh' ? '报告错误或建议功能 (赚取XP!)' : 'Report bugs or suggest features (Earn XP!)'}`);
         addOutput(`  15. ${language === 'zh' ? '破产区' : 'REKT'}      - ${t.legend.locationDescriptions.poorDistrict}`);
-        addOutput(`  16. ${t.legend.locations.castle.toUpperCase().padEnd(11)} - ${t.legend.locationDescriptions.castle} [Lv 5+]`);
-        addOutput(`  17. ${t.legend.locations.crimeLordLair.toUpperCase().padEnd(10)} - ${t.legend.locationDescriptions.crimeLordLair} [Lv 10+]`);
+        addOutput(`  16. ${language === 'zh' ? '城市区' : 'CITY'}      - ${t.legend.locationDescriptions.cityDistrict}`);
+        addOutput(`  17. ${t.legend.locations.castle.toUpperCase().padEnd(11)} - ${t.legend.locationDescriptions.castle} [Lv 5+]`);
+        addOutput(`  18. ${t.legend.locations.crimeLordLair.toUpperCase().padEnd(10)} - ${t.legend.locationDescriptions.crimeLordLair} [Lv 10+]`);
         addOutput('');
         addOutput('═══════════════════════════════════════════════════');
         addOutput(language === 'zh' ? '⚠️ 重要提示：' : '⚠️ IMPORTANT:');
@@ -430,8 +436,9 @@ const TerminalTownSquare: React.FC<TerminalTownSquareProps> = ({
             { num: 14, id: 'quest_board', key: 'questBoard', locked: false, emoji: '📜' },
             { num: 15, id: 'bug_report', key: 'bugReport', locked: false, emoji: '🐛' },
             { num: 16, id: 'poor_district', key: 'poorDistrict', locked: false, emoji: '💀' },
-            { num: 17, id: 'castle', key: 'castle', locked: player.level < 5 },
-            { num: 18, id: 'crime_lord_lair', key: 'crimeLordLair', locked: player.level < 10 }
+            { num: 17, id: 'city_district', key: 'cityDistrict', locked: false, emoji: '🏛️' },
+            { num: 18, id: 'castle', key: 'castle', locked: player.level < 5 },
+            { num: 19, id: 'crime_lord_lair', key: 'crimeLordLair', locked: player.level < 10 }
         ];
 
         // Handle ESC key to close modal
@@ -516,6 +523,8 @@ const TerminalTownSquare: React.FC<TerminalTownSquareProps> = ({
                 setShowBugReport(true);
             } else if (loc.id === 'poor_district') {
                 setSelectedLocation('poor_district');
+            } else if (loc.id === 'city_district') {
+                setSelectedLocation('city_district');
             } else if (loc.id === 'castle') {
                 handleRichDistrict();
             } else if (loc.id === 'crime_lord_lair') {
@@ -686,6 +695,9 @@ const TerminalTownSquare: React.FC<TerminalTownSquareProps> = ({
                 {selectedLocation === 'poor_district' && (
                     <PoorDistrict player={player} updatePlayer={updatePlayer} onClose={initialModal ? handleModalClose : () => setSelectedLocation(null)} setGameMessage={setGameMessage} />
                 )}
+                {selectedLocation === 'city_district' && (
+                    <CityDistrict player={player} updatePlayer={updatePlayer} onClose={initialModal ? handleModalClose : () => setSelectedLocation(null)} setGameMessage={setGameMessage} />
+                )}
                 {showGoldShop && (
                     <GoldShop
                         onClose={() => setShowGoldShop(false)}
@@ -751,11 +763,12 @@ const TerminalTownSquare: React.FC<TerminalTownSquareProps> = ({
                     <PVPCombat
                         player={player}
                         target={pvpTarget}
-                        onComplete={(victory, goldChange) => {
+                        onComplete={(victory, goldChange, serverData) => {
                             setPvpTarget(null);
                             updatePlayer({
                                 gold: player.gold + goldChange,
-                                turnsRemaining: player.turnsRemaining - 1,
+                                // Use server's authoritative turn count (server already deducted 1 turn)
+                                turnsRemaining: serverData?.turnsRemaining ?? player.turnsRemaining - 1,
                                 pvpWins: victory ? player.pvpWins + 1 : player.pvpWins,
                                 pvpLosses: victory ? player.pvpLosses : player.pvpLosses + 1
                             });

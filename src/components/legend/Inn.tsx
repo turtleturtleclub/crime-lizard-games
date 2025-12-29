@@ -29,10 +29,39 @@ const Inn: React.FC<InnProps> = ({ player, updatePlayer, onClose, setGameMessage
         return GAME_CONSTANTS.INN_SLEEP_BASE_COST + (levelsAboveThreshold * GAME_CONSTANTS.INN_SLEEP_LEVEL_MULTIPLIER);
     };
 
+    // Check if player already has active protection
+    const hasActiveProtection = () => {
+        if (!player.lastSafeSleep || !player.sleptSafely) return false;
+
+        const protectionDuration = player.sleepLocation === 'brothel'
+            ? GAME_CONSTANTS.BROTHEL_PROTECTION_DURATION
+            : GAME_CONSTANTS.INN_PROTECTION_DURATION;
+
+        const timeSinceSleep = Date.now() - new Date(player.lastSafeSleep).getTime();
+        return timeSinceSleep < protectionDuration;
+    };
+
+    // Get remaining protection time in hours
+    const getRemainingProtectionTime = () => {
+        if (!player.lastSafeSleep) return 0;
+        const protectionDuration = player.sleepLocation === 'brothel'
+            ? GAME_CONSTANTS.BROTHEL_PROTECTION_DURATION
+            : GAME_CONSTANTS.INN_PROTECTION_DURATION;
+        const timeSinceSleep = Date.now() - new Date(player.lastSafeSleep).getTime();
+        const remaining = protectionDuration - timeSinceSleep;
+        return Math.max(0, Math.ceil(remaining / (60 * 60 * 1000))); // Hours remaining
+    };
+
     const sleepCost = calculateSleepCost();
     const canAfford = player.gold >= sleepCost;
+    const isProtected = hasActiveProtection();
 
     const handleSleep = async () => {
+        if (isProtected) {
+            setGameMessage(`🛡️ You already have ${getRemainingProtectionTime()} hours of protection remaining! Wait for it to expire.`);
+            return;
+        }
+
         if (!canAfford) {
             setGameMessage(t.legend.messages.notEnoughGold);
             return;
@@ -60,10 +89,11 @@ const Inn: React.FC<InnProps> = ({ player, updatePlayer, onClose, setGameMessage
                     gold: player.gold - sleepCost,
                     lastSafeSleep: new Date(),
                     sleptSafely: true,
+                    sleepLocation: 'inn',
                     health: player.maxHealth // Full heal on sleep
                 });
 
-                setGameMessage(`💤 ${t.legend.messages.sleepSuccess} ${t.legend.messages.protected} ${t.legend.sleep.fullHeal}.`);
+                setGameMessage(`💤 ${t.legend.messages.sleepSuccess} 8 hours of protection activated! ${t.legend.sleep.fullHeal}.`);
 
                 setTimeout(() => {
                     onClose();
@@ -130,6 +160,22 @@ const Inn: React.FC<InnProps> = ({ player, updatePlayer, onClose, setGameMessage
                     </div>
                 </div>
 
+                {/* Active Protection Warning */}
+                {isProtected && (
+                    <div className="bg-black border-2 border-green-500 p-4 mb-4">
+                        <div className="flex items-start gap-3">
+                            <span className="text-3xl">🛡️</span>
+                            <div>
+                                <h3 className="font-bold text-green-500 mb-1">Already Protected!</h3>
+                                <p className="text-sm text-gray-300">
+                                    You have {getRemainingProtectionTime()} hours of protection remaining.
+                                    You cannot sleep again until your current protection expires.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
                 {/* Sleep Info */}
                 <div className="bg-black border border-[#00FF88] p-4 mb-4">
                     <h3 className="font-bold text-[#00FF88] mb-4 text-center">💤 {t.legend.sleep.benefits}</h3>
@@ -138,7 +184,7 @@ const Inn: React.FC<InnProps> = ({ player, updatePlayer, onClose, setGameMessage
                             <div className="text-3xl mb-2">🛡️</div>
                             <h4 className="font-bold text-white mb-1">{t.legend.sleep.protection}</h4>
                             <p className="text-sm text-gray-400">
-                                {t.legend.messages.protected}
+                                8 hours of PVP protection
                             </p>
                         </div>
                         <div className="bg-black border border-[#00FF88] p-4">
@@ -169,10 +215,10 @@ const Inn: React.FC<InnProps> = ({ player, updatePlayer, onClose, setGameMessage
                 {/* Sleep Button */}
                 <button
                     onClick={handleSleep}
-                    disabled={!canAfford || sleeping}
+                    disabled={!canAfford || sleeping || isProtected}
                     className="w-full py-4 bg-[#00AA55] border-2 border-[#00FF88] text-[#00FF88] font-bold hover:bg-[#00BB66] transition-all disabled:opacity-50 disabled:cursor-not-allowed text-lg mb-4"
                 >
-                    {sleeping ? '💤 Resting...' : `💤 ${t.legend.sleep.sleepAtInn} (${sleepCost} ${t.legend.stats.gold.toLowerCase()})`}
+                    {sleeping ? '💤 Resting...' : isProtected ? '🛡️ Already Protected' : `💤 ${t.legend.sleep.sleepAtInn} (${sleepCost} ${t.legend.stats.gold.toLowerCase()})`}
                 </button>
 
                 {/* Comparison */}

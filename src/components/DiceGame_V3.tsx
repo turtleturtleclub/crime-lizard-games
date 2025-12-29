@@ -13,23 +13,24 @@ import { useGameFAI } from './GameAI';
 import { ethers } from 'ethers';
 import { Howl } from 'howler';
 import { getNetworkConfig } from '../config/contracts';
-import { DICE_V7_ABI } from '../diceV7Abi';
+import { DICE_V8_ABI } from '../diceV8Abi';
 import { useLanguage } from '../contexts/LanguageContext';
-const DICE_ABI = DICE_V7_ABI;
+const DICE_ABI = DICE_V8_ABI;
 import '../App.css';
 
-// Dice Contract Type
+// Dice Contract Type (V8 - Commit-Reveal Provably Fair)
 type CrimeLizardDice = ethers.BaseContract & {
     // Character management
     selectCharacter(tokenId: bigint): Promise<ethers.TransactionResponse>;
     getActiveCharacter(player: string): Promise<bigint>;
 
-    // Game functions - DiceV7 with server-signed randomness
-    roll(betAmount: bigint, randomSeed: bigint, nonce: string, signature: string, overrides?: ethers.Overrides): Promise<ethers.TransactionResponse>;
+    // Game functions - DiceV8 with commit-reveal randomness
+    roll(betAmount: bigint, clientSeed: string, overrides?: ethers.Overrides): Promise<ethers.TransactionResponse>;
     getPlayerStats(address: string): Promise<any>;
     getDiceName(total: bigint): Promise<string>;
     getPayoutForTotal(total: bigint): Promise<bigint>;
     jackpot(): Promise<bigint>;
+    getAvailableSeedCount(): Promise<bigint>;
 
     // Events
     on(event: string, listener: (...args: any[]) => void): ethers.BaseContract;
@@ -242,35 +243,10 @@ const DiceGame: React.FC<DiceGameProps> = ({ onClose }) => {
         }
     }, [account, selectedCharacter]);
 
-    // Update gold in database after win/loss (database-first, then background blockchain sync)
-    const updateDatabaseGold = useCallback(async (goldChange: number, reason: string) => {
-        if (!account || !selectedCharacter) return;
-
-        try {
-            const response = await fetch('/api/legend/update-gold', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    walletAddress: account,
-                    tokenId: Number(selectedCharacter.tokenId),
-                    goldChange,
-                    reason
-                })
-            });
-
-            if (response.ok) {
-                const data = await response.json();
-// Update local display
-                setDatabaseGold(data.newGold);
-
-                return data;
-            } else {
-                console.error('❌ Dice: Failed to update database gold:', await response.text());
-            }
-        } catch (error) {
-            console.error('❌ Dice: Failed to update database gold:', error);
-        }
-    }, [account, selectedCharacter]);
+    // NOTE: updateDatabaseGold removed - gold is now handled DATABASE-FIRST:
+    // - Bet deducted via /api/legend/dice-roll before calling contract
+    // - Winnings added by server when it sees RollResult event
+    // - Frontend refreshes from database after result
 
     // Game state
     const [gameState, setGameState] = useState<DiceGameState>({
@@ -339,7 +315,7 @@ isNavigatingRef.current = true;
                 return;
             }
 
-            const contractAddress = networkConfig.contracts.dice;
+            const contractAddress = networkConfig.contracts.diceV8;
             if (!contractAddress || contractAddress === '0x0000000000000000000000000000000000000000') {
                 console.error('❌ Dice: Contract not deployed on this network');
                 return;
@@ -487,65 +463,49 @@ isNavigatingRef.current = true;
      * Roll dice with on-chain randomness
      */
     const rollDice = useCallback(async () => {
-        console.log('🎲 Dice: rollDice called');
-
         if (gameState.isRolling || isProcessingTx) {
-            console.log('🎲 Dice: Already rolling or processing, returning');
             return;
         }
 
         if (!account) {
-            console.log('🎲 Dice: No account connected');
             connectWallet();
             toast.error('Please connect your wallet first!');
             return;
         }
 
         if (!selectedCharacter) {
-            console.log('🎲 Dice: No character selected');
             toast.error('Please select a character first!');
             return;
         }
 
         if (!contract || !provider) {
-            console.log('🎲 Dice: Contract or provider missing', { contract: !!contract, provider: !!provider });
             toast.error('Dice contract not initialized. Please refresh the page.');
             return;
         }
 
-        // Verify user is on mainnet before any roll
         if (currentChainId !== 56) {
-            console.log('🎲 Dice: Wrong chain', currentChainId);
             toast.error('Please switch to BNB Mainnet to play!');
             return;
         }
 
-        console.log('🎲 Dice: Selecting character on contract...');
-        // Ensure character is selected on the Dice contract (will prompt wallet if needed)
         const characterSelected = await selectCharacterOnContract();
         if (!characterSelected) {
-            console.log('🎲 Dice: Character selection failed');
             return;
         }
-        console.log('🎲 Dice: Character selected successfully');
 
         const betAmountNum = parseFloat(betAmountRef.current);
-        console.log('🎲 Dice: Bet amount:', betAmountNum, 'Database gold:', databaseGold);
 
         if (betAmountNum <= 0) {
-            console.log('🎲 Dice: Bet amount <= 0');
             toast.error('Bet amount must be greater than 0!');
             return;
         }
 
         if (betAmountNum > databaseGold) {
-            console.log('🎲 Dice: Insufficient gold');
             toast.error('Insufficient gold balance!');
             return;
         }
 
         try {
-            console.log('🎲 Dice: Starting transaction process...');
             setIsProcessingTx(true);
             setGameState(prev => ({
                 ...prev,
@@ -554,36 +514,38 @@ isNavigatingRef.current = true;
                 banterType: 'rolling'
             }));
 
-            // Get signer
-            console.log('🎲 Dice: Getting signer...');
-            const signer = await provider.getSigner();
-            const contractWithSigner = contract.connect(signer) as CrimeLizardDice;
-
-            const betAmountGold = BigInt(betAmountNum);
-
-            // Request server-signed randomness
-            console.log('🎲 Dice: Requesting signed randomness...');
-            toast.info('🔐 Requesting secure randomness...', { autoClose: 2000 });
-
-            const signatureResponse = await fetch('/api/legend/dice-signature', {
+            // DATABASE-FIRST: Call server API to deduct bet from database
+            // This returns a clientSeed for provably fair and updates database gold
+            const apiResponse = await fetch('/api/legend/dice-roll', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    playerAddress: account,
-                    characterId: Number(selectedCharacter.tokenId),
+                    walletAddress: account,
+                    tokenId: Number(selectedCharacter.tokenId), // Convert BigInt to number for JSON
                     betAmount: betAmountNum
                 })
             });
 
-            if (!signatureResponse.ok) {
-                const errorData = await signatureResponse.json().catch(() => ({}));
-                throw new Error(errorData.error || 'Failed to get signed randomness from server');
+            const apiResult = await apiResponse.json();
+
+            if (!apiResult.success) {
+                setIsProcessingTx(false);
+                setGameState(prev => ({
+                    ...prev,
+                    isRolling: false,
+                    banterMessage: '',
+                    banterType: 'idle'
+                }));
+                toast.error(apiResult.error || 'Failed to place bet');
+                return;
             }
 
-            const signedData = await signatureResponse.json();
-            if (!signedData.success || !signedData.randomSeed || !signedData.nonce || !signedData.signature) {
-                throw new Error('Invalid signature response from server');
-            }
+            const clientSeed = apiResult.clientSeed;
+            setDatabaseGold(apiResult.goldAfter);
+
+            const signer = await provider.getSigner();
+            const contractWithSigner = contract.connect(signer) as CrimeLizardDice;
+            const betAmountGold = BigInt(betAmountNum);
 
             // Notify AI (convert BigInt to string for JSON serialization)
             notifyGameEventRef.current({
@@ -618,68 +580,82 @@ isNavigatingRef.current = true;
 
             toast.info('🎲 Rolling dice...', { autoClose: 2000 });
 
-            // Send blockchain transaction with server-signed randomness
+            // V8: Send transaction with client seed only (commit-reveal)
             const tx = await contractWithSigner.roll(
                 betAmountGold,
-                BigInt(signedData.randomSeed),
-                signedData.nonce,
-                signedData.signature,
-                { gasLimit: 1000000 }
+                clientSeed,
+                { gasLimit: 500000 }
             );
             toast.info('⏳ Processing transaction...', { autoClose: 2000 });
 
             const receipt = await tx.wait();
-setIsProcessingTx(false);
+            setIsProcessingTx(false);
 
-            // V4: Instant randomness - parse RollResult event from receipt logs!
+            // V8: Parse RollRequested to get seedId
+            let seedId: string | null = null;
             if (receipt && receipt.logs) {
-
-                let foundEvent = false;
                 for (const log of receipt.logs) {
                     try {
                         const parsedLog = contract.interface.parseLog({
                             topics: [...log.topics],
                             data: log.data
                         });
-
-                        if (parsedLog && parsedLog.name === 'RollResult') {
-                            foundEvent = true;
-                            const args = parsedLog.args;
-                            const sequenceNumber = args.sequenceNumber?.toString();
-
-                            // Check if already processed
-                            if (sequenceNumber && processedSequenceNumbers.current.has(sequenceNumber)) {
-continue;
-                            }
-
-                            if (sequenceNumber) {
-                                processedSequenceNumbers.current.add(sequenceNumber);
-                            }
-
-
-                            // Stop animation
-                            clearInterval(animationInterval);
-
-                            processRollResult(args);
+                        if (parsedLog && parsedLog.name === 'RollRequested') {
+                            seedId = parsedLog.args.seedId?.toString();
                             break;
                         }
-                    } catch (parseError) {
-                        // Not a RollResult event, continue
+                    } catch {
                         continue;
                     }
                 }
+            }
 
-                if (!foundEvent) {
-                    console.warn('⚠️ Dice V4: No RollResult event found in receipt');
-                    clearInterval(animationInterval);
-                    toast.warning('Result not found. Refreshing balance...', { autoClose: 3000 });
-                    setGameState(prev => ({ ...prev, isRolling: false, banterType: 'idle', banterMessage: getRandomBanter('idle') }));
-                    refreshGoldBalanceRef.current();
+            // V8: Wait for RollResult event from server's revealSeed transaction
+            const waitForResult = new Promise<any>((resolve, reject) => {
+                const timeout = setTimeout(() => {
+                    contract.off('RollResult', listener);
+                    reject(new Error('Timeout waiting for roll result'));
+                }, 30000);
+
+                const listener = (player: string, characterId: bigint, resultSeedId: bigint, dice1: bigint, dice2: bigint, total: bigint, payout: bigint, jackpotWon: bigint, resultBetAmount: bigint, timestamp: bigint) => {
+                    if (player.toLowerCase() === account?.toLowerCase() &&
+                        (!seedId || resultSeedId.toString() === seedId)) {
+                        clearTimeout(timeout);
+                        contract.off('RollResult', listener);
+                        resolve({
+                            player,
+                            characterId,
+                            seedId: resultSeedId,
+                            dice1,
+                            dice2,
+                            total,
+                            payout,
+                            jackpotWon,
+                            betAmount: resultBetAmount,
+                            timestamp
+                        });
+                    }
+                };
+
+                contract.on('RollResult', listener);
+            });
+
+            try {
+                const resultArgs = await waitForResult;
+                const resultSeedId = resultArgs.seedId?.toString();
+
+                if (resultSeedId && !processedSequenceNumbers.current.has(resultSeedId)) {
+                    processedSequenceNumbers.current.add(resultSeedId);
                 }
-            } else {
-                console.error('❌ Dice V4: No receipt or logs available');
+
                 clearInterval(animationInterval);
-                toast.error('Transaction confirmed but result unclear. Check your balance.');
+                processRollResult(resultArgs);
+                refreshGoldBalanceRef.current();
+
+            } catch (waitError) {
+                console.warn('⚠️ Dice V8: Timeout waiting for result:', waitError);
+                clearInterval(animationInterval);
+                toast.warning('Result delayed. Refreshing balance...', { autoClose: 3000 });
                 setGameState(prev => ({ ...prev, isRolling: false, banterType: 'idle', banterMessage: getRandomBanter('idle') }));
                 refreshGoldBalanceRef.current();
             }
@@ -758,15 +734,26 @@ continue;
         const goldChange = finalPayout - betAmountNum;
         const actuallyProfited = goldChange > 0;
 
-        // Update database gold immediately (database-first, background sync to blockchain)
-        if (goldChange !== 0) {
-            updateDatabaseGold(
-                goldChange,
-                `Dice ${goldChange > 0 ? 'win' : 'loss'}: ${name} (${total})`
-            ).catch(err => {
-                console.error('❌ Failed to update gold:', err);
-            });
-        }
+        // NOTE: Gold is now handled DATABASE-FIRST:
+        // - Bet was deducted from database BEFORE calling contract (via /api/legend/dice-roll)
+        // - Server adds winnings to database when it sees RollResult event
+        // - We just need to refresh the display to show updated gold from database
+
+        // Refresh gold from database to show the server's updated value
+        // Small delay to allow server to process RollResult and update database
+        setTimeout(async () => {
+            try {
+                const response = await fetch(`/api/legend/player/${account}/${selectedCharacter?.tokenId}`);
+                if (response.ok) {
+                    const playerData = await response.json();
+                    if (playerData.gold !== undefined) {
+                        setDatabaseGold(playerData.gold);
+                    }
+                }
+            } catch (err) {
+                console.error('Failed to refresh gold from database:', err);
+            }
+        }, 3000); // 3 second delay to allow server to process
 
         // Determine banter type based on tier
         let banterType: 'idle' | 'rolling' | 'win' | 'loss' | 'bigwin' | 'jackpot' = 'loss';
@@ -865,7 +852,7 @@ continue;
                 banterMessage: getRandomBanter('idle')
             }));
         }, 5000);
-    }, [account, updateDatabaseGold]);
+    }, [account, selectedCharacter]);
 
     // Listen for RollResult events
     useEffect(() => {

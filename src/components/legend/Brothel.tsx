@@ -30,10 +30,39 @@ const Brothel: React.FC<BrothelProps> = ({ player, updatePlayer, onClose, setGam
         return GAME_CONSTANTS.BROTHEL_SLEEP_BASE_COST + (levelsAboveThreshold * GAME_CONSTANTS.BROTHEL_SLEEP_LEVEL_MULTIPLIER);
     };
 
+    // Check if player already has active protection
+    const hasActiveProtection = () => {
+        if (!player.lastSafeSleep || !player.sleptSafely) return false;
+
+        const protectionDuration = player.sleepLocation === 'brothel'
+            ? GAME_CONSTANTS.BROTHEL_PROTECTION_DURATION
+            : GAME_CONSTANTS.INN_PROTECTION_DURATION;
+
+        const timeSinceSleep = Date.now() - new Date(player.lastSafeSleep).getTime();
+        return timeSinceSleep < protectionDuration;
+    };
+
+    // Get remaining protection time in hours
+    const getRemainingProtectionTime = () => {
+        if (!player.lastSafeSleep) return 0;
+        const protectionDuration = player.sleepLocation === 'brothel'
+            ? GAME_CONSTANTS.BROTHEL_PROTECTION_DURATION
+            : GAME_CONSTANTS.INN_PROTECTION_DURATION;
+        const timeSinceSleep = Date.now() - new Date(player.lastSafeSleep).getTime();
+        const remaining = protectionDuration - timeSinceSleep;
+        return Math.max(0, Math.ceil(remaining / (60 * 60 * 1000))); // Hours remaining
+    };
+
     const sleepCost = calculateSleepCost();
     const canAfford = player.gold >= sleepCost;
+    const isProtected = hasActiveProtection();
 
     const handleSleep = async () => {
+        if (isProtected) {
+            setGameMessage(`💋 You already have ${getRemainingProtectionTime()} hours of protection remaining! Wait for it to expire.`);
+            return;
+        }
+
         if (!canAfford) {
             setGameMessage('❌ Not enough gold for the Velvet Embrace!');
             return;
@@ -64,6 +93,7 @@ const Brothel: React.FC<BrothelProps> = ({ player, updatePlayer, onClose, setGam
                     gold: player.gold - sleepCost,
                     lastSafeSleep: new Date(),
                     sleptSafely: true,
+                    sleepLocation: 'brothel',
                     health: player.maxHealth + healthBonus,
                     maxHealth: player.maxHealth + healthBonus
                 };
@@ -83,7 +113,7 @@ const Brothel: React.FC<BrothelProps> = ({ player, updatePlayer, onClose, setGam
                     `💋 A night of luxury! ` +
                     `Health fully restored + ${healthBonus} max HP! ` +
                     `+${statBonus.amount} ${statBonus.stat.toUpperCase()}! ` +
-                    `Protected from gankers! 🌹`
+                    `12 hours of premium protection! 🌹`
                 );
 
                 setTimeout(() => {
@@ -136,6 +166,22 @@ const Brothel: React.FC<BrothelProps> = ({ player, updatePlayer, onClose, setGam
                     {t.legend.sleep.brothelDescription}
                 </div>
 
+                {/* Active Protection Warning */}
+                {isProtected && (
+                    <div className="bg-black border-2 border-pink-500 p-4 mb-4">
+                        <div className="flex items-start gap-3">
+                            <span className="text-3xl">💋</span>
+                            <div>
+                                <h3 className="font-bold text-pink-500 mb-1">Already Protected!</h3>
+                                <p className="text-sm text-pink-300">
+                                    You have {getRemainingProtectionTime()} hours of protection remaining.
+                                    You cannot rest again until your current protection expires.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
                 {/* Premium Benefits */}
                 <div className="bg-black border border-pink-500 p-4 mb-4">
                     <h3 className="font-bold text-pink-500 mb-4 text-center">✨ {t.legend.sleep.premiumBenefits}</h3>
@@ -144,7 +190,7 @@ const Brothel: React.FC<BrothelProps> = ({ player, updatePlayer, onClose, setGam
                             <div className="text-3xl mb-2">🛡️</div>
                             <h4 className="font-bold text-white mb-1">{t.legend.sleep.maxProtection}</h4>
                             <p className="text-sm text-pink-300">
-                                {t.legend.sleep.safeFromGankers}
+                                12 hours of premium PVP protection
                             </p>
                         </div>
                         <div className="bg-black border border-pink-500 p-4">
@@ -198,10 +244,10 @@ const Brothel: React.FC<BrothelProps> = ({ player, updatePlayer, onClose, setGam
                 {/* Sleep Button */}
                 <button
                     onClick={handleSleep}
-                    disabled={!canAfford || sleeping}
+                    disabled={!canAfford || sleeping || isProtected}
                     className="w-full py-4 bg-pink-900 border-2 border-pink-500 text-pink-500 font-bold hover:bg-pink-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed text-lg mb-4"
                 >
-                    {sleeping ? `💋 ${t.legend.sleep.enjoyingLuxury}...` : `💋 ${t.legend.sleep.restAtBrothel} (${sleepCost} ${t.legend.stats.gold})`}
+                    {sleeping ? `💋 ${t.legend.sleep.enjoyingLuxury}...` : isProtected ? '💋 Already Protected' : `💋 ${t.legend.sleep.restAtBrothel} (${sleepCost} ${t.legend.stats.gold})`}
                 </button>
 
                 {/* Comparison */}

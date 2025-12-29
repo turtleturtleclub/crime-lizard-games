@@ -9,6 +9,8 @@ import { SLOTS_CONTRACT_ADDRESS } from '../slotsV11Abi';
 import { GOLD_CONTRACT_ADDRESS } from '../goldV7Abi';
 import { CHARACTER_CONTRACT_ADDRESS } from '../characterAbi';
 import { CLZD_TOKEN_ADDRESS } from '../clzdAbi';
+import { SLOTS_V12_CONTRACT_ADDRESS } from '../slotsV12Abi';
+import { DICE_V8_CONTRACT_ADDRESS } from '../diceV8Abi';
 
 // Prediction contract address (deployed Dec 2025)
 export const PREDICTION_CONTRACT_ADDRESS = {
@@ -31,6 +33,8 @@ export interface NetworkConfig {
         gold: string;
         slots: string;
         dice: string;
+        slotsV12: string;
+        diceV8: string;
         clzdToken: string;
         prediction: string;
     };
@@ -68,6 +72,8 @@ export const NETWORKS: Record<number, NetworkConfig> = {
             gold: GOLD_CONTRACT_ADDRESS.mainnet,
             slots: SLOTS_CONTRACT_ADDRESS.mainnet,
             dice: DICE_CONTRACT_ADDRESS.mainnet,
+            slotsV12: SLOTS_V12_CONTRACT_ADDRESS.mainnet,
+            diceV8: DICE_V8_CONTRACT_ADDRESS.mainnet,
             clzdToken: CLZD_TOKEN_ADDRESS.mainnet,
             prediction: PREDICTION_CONTRACT_ADDRESS.mainnet,
         },
@@ -86,7 +92,7 @@ export const getNetworkConfig = (chainId: number): NetworkConfig | undefined => 
  */
 export const getContractAddress = (
     chainId: number,
-    contract: 'character' | 'gold' | 'slots' | 'dice' | 'clzdToken'
+    contract: 'character' | 'gold' | 'slots' | 'dice' | 'slotsV12' | 'diceV8' | 'clzdToken'
 ): string | undefined => {
     const network = NETWORKS[chainId];
     return network?.contracts[contract];
@@ -97,7 +103,7 @@ export const getContractAddress = (
  */
 export const isContractConfigured = (
     chainId: number,
-    contract: 'character' | 'gold' | 'slots' | 'dice' | 'clzdToken'
+    contract: 'character' | 'gold' | 'slots' | 'dice' | 'slotsV12' | 'diceV8' | 'clzdToken'
 ): boolean => {
     const address = getContractAddress(chainId, contract);
     return Boolean(
@@ -119,6 +125,8 @@ export const getCurrentNetwork = (): NetworkConfig | undefined => {
 export const ACTIVE_CONTRACTS = {
     DICE: DICE_CONTRACT_ADDRESS.mainnet,
     SLOTS: SLOTS_CONTRACT_ADDRESS.mainnet,
+    SLOTS_V12: SLOTS_V12_CONTRACT_ADDRESS.mainnet,
+    DICE_V8: DICE_V8_CONTRACT_ADDRESS.mainnet,
     GOLD: GOLD_CONTRACT_ADDRESS.mainnet,
     CHARACTER: CHARACTER_CONTRACT_ADDRESS.mainnet,
     CLZD_TOKEN: CLZD_TOKEN_ADDRESS.mainnet,

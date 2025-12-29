@@ -7,7 +7,7 @@ import { useModalClose } from '../../hooks/useModalClose';
 interface PVPCombatProps {
     player: PlayerCharacter;
     target: PVPTarget;
-    onComplete: (victory: boolean, goldChange: number) => void;
+    onComplete: (victory: boolean, goldChange: number, serverData?: { turnsRemaining: number }) => void;
     onCancel: () => void;
 }
 
@@ -113,8 +113,8 @@ const PVPCombat: React.FC<PVPCombatProps> = ({ player, target, onComplete, onCan
             setVictory(true);
             setCombatEnded(true);
 
-            // Record PVP victory
-            await fetch('/api/legend/pvp/result', {
+            // Record PVP victory and get authoritative server data
+            const response = await fetch('/api/legend/pvp/result', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -126,9 +126,10 @@ const PVPCombat: React.FC<PVPCombatProps> = ({ player, target, onComplete, onCan
                     goldChange: goldStolen
                 })
             });
+            const serverData = await response.json();
 
             setTimeout(() => {
-                onComplete(true, goldStolen);
+                onComplete(true, goldStolen, { turnsRemaining: serverData.attacker?.turnsRemaining ?? player.turnsRemaining - 1 });
             }, 2000);
         } else {
             // Player loses
@@ -139,8 +140,8 @@ const PVPCombat: React.FC<PVPCombatProps> = ({ player, target, onComplete, onCan
             setVictory(false);
             setCombatEnded(true);
 
-            // Record PVP defeat
-            await fetch('/api/legend/pvp/result', {
+            // Record PVP defeat and get authoritative server data
+            const response = await fetch('/api/legend/pvp/result', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -152,9 +153,10 @@ const PVPCombat: React.FC<PVPCombatProps> = ({ player, target, onComplete, onCan
                     goldChange: -goldLost
                 })
             });
+            const serverData = await response.json();
 
             setTimeout(() => {
-                onComplete(false, -goldLost);
+                onComplete(false, -goldLost, { turnsRemaining: serverData.attacker?.turnsRemaining ?? player.turnsRemaining - 1 });
             }, 2000);
         }
     };

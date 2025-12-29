@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import type { PlayerCharacter, Enemy, Accessory, InventoryItem } from '../../types/legend.types';
-import { ENEMIES, ACCESSORIES, scaleEnemyToPlayerLevel, calculateTurnCost, calculateEnemyCritical, calculateDeathPenalties } from '../../data/gameData';
+import { ENEMIES, ACCESSORIES, GAME_CONSTANTS, scaleEnemyToPlayerLevel, calculateTurnCost, calculateEnemyCritical, calculateDeathPenalties } from '../../data/gameData';
 import TerminalInput from './TerminalInput';
 import ItemPickupModal from './ItemPickupModal';
 import BattleHeader from './BattleHeader';
@@ -32,7 +32,11 @@ const TerminalCombat: React.FC<TerminalCombatProps> = ({ player, updatePlayer, s
     const [pendingItem, setPendingItem] = useState<Accessory | null>(null); // Item waiting to be picked up
     const [showShop, setShowShop] = useState(false); // Show shop when out of turns
     const [isAttacking, setIsAttacking] = useState(false); // Prevent rapid-fire attacks
+    const [tempMaxHPReduction, setTempMaxHPReduction] = useState(0); // Temporary battle-only max HP reduction (Disease Bite, Void Tear)
     const combatLogRef = useRef<HTMLDivElement>(null);
+
+    // Effective max HP for this battle (reduced by temporary effects)
+    const effectiveMaxHP = Math.max(10, player.maxHealth - tempMaxHPReduction);
 
     // Handle ESC key and mobile back button to trigger flee
     const handleModalClose = () => {
@@ -85,7 +89,8 @@ const TerminalCombat: React.FC<TerminalCombatProps> = ({ player, updatePlayer, s
                         addLog(`⭐ +${event.outcome.experienceChange} XP!`);
                     }
                     if (event.outcome.healthChange) {
-                        const newHealth = Math.max(0, Math.min(player.maxHealth, player.health + event.outcome.healthChange));
+                        // Cap healing at effective max HP (accounts for Disease Bite / Void Tear)
+                        const newHealth = Math.max(0, Math.min(effectiveMaxHP, player.health + event.outcome.healthChange));
                         updatePlayer({ health: newHealth });
                         addLog(`${event.outcome.healthChange > 0 ? '❤️ +' : '💔 '}${event.outcome.healthChange} HP!`);
                     }
@@ -103,6 +108,9 @@ const TerminalCombat: React.FC<TerminalCombatProps> = ({ player, updatePlayer, s
     }, [currentEnemy]);
 
     const generateEnemy = async () => {
+        // Reset temporary battle effects when starting a new fight
+        setTempMaxHPReduction(0);
+
         const enemyKeys = Object.keys(ENEMIES);
 
         // Check for rare crypto legend spawns (they have spawnChance property)
@@ -180,11 +188,25 @@ const TerminalCombat: React.FC<TerminalCombatProps> = ({ player, updatePlayer, s
 
         // Fallback to static enemies if AI generation fails or 20% of the time for variety
         if (!enemy) {
+            // Get location modifiers for combat areas
+            const locationModifiers = GAME_CONSTANTS.LOCATION_MODIFIERS[player.location];
+
             const levelAppropriate = enemyKeys.filter(key => {
                 const staticEnemy = ENEMIES[key];
                 // Exclude special spawns and bosses from normal rotation
                 if (staticEnemy.spawnChance !== undefined || staticEnemy.rarity === 'boss') return false;
-                return staticEnemy.level >= player.level - 2 && staticEnemy.level <= player.level + 2;
+
+                // Apply location-based level filtering if in a combat location
+                if (locationModifiers) {
+                    // Filter by location's level range
+                    if (staticEnemy.level < locationModifiers.levelRange.min ||
+                        staticEnemy.level > locationModifiers.levelRange.max) {
+                        return false;
+                    }
+                }
+
+                // Also filter within player's level range for balanced gameplay
+                return staticEnemy.level >= Math.max(1, player.level - 5) && staticEnemy.level <= player.level + 3;
             });
 
             const enemyKey = levelAppropriate.length > 0
@@ -266,6 +288,13 @@ const TerminalCombat: React.FC<TerminalCombatProps> = ({ player, updatePlayer, s
     const attack = async () => {
         if (!currentEnemy) return;
 
+        // SECURITY FIX: Prevent attacking already-dead enemies (duplicate rewards exploit)
+        // Enemy health is 0 after death but new enemy spawns after 2s delay
+        if (enemyHealth <= 0) {
+            addLog(`⏳ Waiting for next enemy...`);
+            return;
+        }
+
         // Rate limiting - prevent rapid-fire attacks
         if (isAttacking) {
             addLog(`⏳ ${t.legend.combat.pleaseWaitAttack}`);
@@ -312,10 +341,10 @@ const TerminalCombat: React.FC<TerminalCombatProps> = ({ player, updatePlayer, s
             addLog(t.legend.combatMessages.criticalHit);
         }
 
-        // Apply weapon lifesteal
+        // Apply weapon lifesteal (capped at effective max HP for this battle)
         if (player.weapon?.advantages?.healingOnHit) {
             const healAmount = player.weapon.advantages.healingOnHit;
-            const newHealth = Math.min(player.maxHealth, player.health + healAmount);
+            const newHealth = Math.min(effectiveMaxHP, player.health + healAmount);
             updatePlayer({ health: newHealth });
             addLog(t.legend.combatMessages.lifesteal.replace('{amount}', healAmount.toString()));
         }
@@ -336,18 +365,58 @@ const TerminalCombat: React.FC<TerminalCombatProps> = ({ player, updatePlayer, s
                 addLog(``);
                 addLog(`💀 ${t.legend.combat.youDefeated}!`);
                 const penalties = calculateDeathPenalties(player);
-                updatePlayer({
-                    health: Math.floor(player.maxHealth * 0.25),
-                    gold: Math.max(0, player.gold - penalties.goldLost),
-                    experience: Math.max(0, player.experience - penalties.xpLost),
-                    location: 'town',
-                    deathCount: (player.deathCount || 0) + 1
-                });
+                addLog(`💀 Death Penalty: -${penalties.goldLost} gold, -${penalties.xpLost} XP`);
+                addLog(`🏥 Respawning in town with ${penalties.respawnHP} HP...`);
+
+                // Apply death penalties on server (authoritative)
+                try {
+                    const response = await fetch('/api/legend/death', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            walletAddress: player.walletAddress,
+                            tokenId: player.tokenId,
+                            goldLost: penalties.goldLost,
+                            xpLost: penalties.xpLost,
+                            turnsLost: penalties.turnsLost,
+                            respawnHP: penalties.respawnHP,
+                            deathCause: `Killed by BNB Chain Golem (Gas Fee Reflection)`
+                        })
+                    });
+
+                    if (response.ok) {
+                        const data = await response.json();
+                        updatePlayer({
+                            health: data.player.health,
+                            gold: data.player.gold,
+                            experience: data.player.experience,
+                            level: data.player.level,
+                            turnsRemaining: data.player.turnsRemaining,
+                            location: 'town',
+                            deathCount: data.player.deathCount
+                        });
+                    } else {
+                        // Fallback to local update if server fails
+                        updatePlayer({
+                            health: penalties.respawnHP,
+                            gold: Math.max(0, player.gold - penalties.goldLost),
+                            location: 'town',
+                            deathCount: (player.deathCount || 0) + 1
+                        });
+                    }
+                } catch (error) {
+                    console.error('Death endpoint error:', error);
+                    updatePlayer({
+                        health: penalties.respawnHP,
+                        gold: Math.max(0, player.gold - penalties.goldLost),
+                        location: 'town',
+                        deathCount: (player.deathCount || 0) + 1
+                    });
+                }
+
                 setTimeout(async () => {
                     if (saveAndChangeLocation) {
                         await saveAndChangeLocation('town');
-                    } else {
-                        updatePlayer({ location: 'town' });
                     }
                 }, 2000);
                 setIsAttacking(false);
@@ -395,7 +464,7 @@ const TerminalCombat: React.FC<TerminalCombatProps> = ({ player, updatePlayer, s
             setTimeout(() => {
                 generateEnemy();
                 setIsAttacking(false);
-            }, 2000);
+            }, 800);  // Reduced from 2000ms - snappier gameplay
             return;
         }
 
@@ -479,23 +548,57 @@ const TerminalCombat: React.FC<TerminalCombatProps> = ({ player, updatePlayer, s
             addLog(``);
             addLog(`🏥 Respawning in town with ${penalties.respawnHP} HP...`);
 
-            // Update death stats first
-            updatePlayer({
-                health: penalties.respawnHP,
-                gold: Math.max(0, player.gold - penalties.goldLost),
-                experience: Math.max(0, player.experience - penalties.xpLost),
-                turnsRemaining: Math.max(0, player.turnsRemaining - penalties.turnsLost),
-                deathCount: (player.deathCount || 0) + 1
-            });
+            // Apply death penalties on server first (authoritative)
+            try {
+                const response = await fetch('/api/legend/death', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        walletAddress: player.walletAddress,
+                        tokenId: player.tokenId,
+                        goldLost: penalties.goldLost,
+                        xpLost: penalties.xpLost,
+                        turnsLost: penalties.turnsLost,
+                        respawnHP: penalties.respawnHP,
+                        deathCause: `Killed by ${currentEnemy?.name || 'enemy'}`
+                    })
+                });
 
-            // Save and return to town after short delay
-            setTimeout(async () => {
-                if (saveAndChangeLocation) {
-                    await saveAndChangeLocation('town');
+                if (response.ok) {
+                    const data = await response.json();
+                    // Update local state with server's authoritative values
+                    updatePlayer({
+                        health: data.player.health,
+                        gold: data.player.gold,
+                        experience: data.player.experience,
+                        turnsRemaining: data.player.turnsRemaining,
+                        deathCount: data.player.deathCount,
+                        location: 'town'
+                    });
                 } else {
-                    updatePlayer({ location: 'town' });
+                    // Fallback to local update if server fails
+                    updatePlayer({
+                        health: penalties.respawnHP,
+                        gold: Math.max(0, player.gold - penalties.goldLost),
+                        experience: Math.max(0, player.experience - penalties.xpLost),
+                        turnsRemaining: Math.max(0, player.turnsRemaining - penalties.turnsLost),
+                        deathCount: (player.deathCount || 0) + 1,
+                        location: 'town'
+                    });
                 }
-            }, 2000);
+            } catch (error) {
+                console.error('Failed to apply death penalties on server:', error);
+                // Fallback to local update
+                updatePlayer({
+                    health: penalties.respawnHP,
+                    gold: Math.max(0, player.gold - penalties.goldLost),
+                    experience: Math.max(0, player.experience - penalties.xpLost),
+                    turnsRemaining: Math.max(0, player.turnsRemaining - penalties.turnsLost),
+                    deathCount: (player.deathCount || 0) + 1,
+                    location: 'town'
+                });
+            }
+
             return;
         }
 
@@ -536,9 +639,13 @@ const TerminalCombat: React.FC<TerminalCombatProps> = ({ player, updatePlayer, s
                 break;
 
             case 'corrupted_wolf':
-                // Pack Hunter - attack twice
+                // Pack Hunter - attack twice (second attack from pack mates)
                 addLog(t.legend.combatMessages.packAttack);
-                // This is handled in the main attack logic
+                // Calculate and apply second attack damage
+                const packDamage = Math.max(1, currentEnemy.strength - player.defense - (player.armor?.defenseBonus || 0));
+                const newPackHealth = Math.max(0, player.health - packDamage);
+                updatePlayer({ health: newPackHealth });
+                addLog(`🐺 Pack deals ${packDamage} additional damage!`);
                 break;
 
             case 'dark_forest_troll':
@@ -573,12 +680,15 @@ const TerminalCombat: React.FC<TerminalCombatProps> = ({ player, updatePlayer, s
                 break;
 
             case 'giant_sewer_rat':
-                // Disease Bite - reduce max HP by 5 for this battle
+                // Disease Bite - TEMPORARILY reduce max HP by 5 for this battle only
                 const diseaseReduction = 5;
-                const newMaxHP = Math.max(10, player.maxHealth - diseaseReduction);
-                const newHealth = Math.min(player.health, newMaxHP);
-                updatePlayer({ maxHealth: newMaxHP, health: newHealth });
-                addLog(t.legend.combatMessages.diseaseBite?.replace('{amount}', diseaseReduction.toString()) || `🦠 Disease Bite! Your max HP reduced by ${diseaseReduction}!`);
+                setTempMaxHPReduction(prev => prev + diseaseReduction);
+                // Cap current health to new effective max if needed
+                const newEffectiveMax = Math.max(10, player.maxHealth - tempMaxHPReduction - diseaseReduction);
+                if (player.health > newEffectiveMax) {
+                    updatePlayer({ health: newEffectiveMax });
+                }
+                addLog(t.legend.combatMessages.diseaseBite?.replace('{amount}', diseaseReduction.toString()) || `🦠 Disease Bite! Your max HP temporarily reduced by ${diseaseReduction}!`);
                 break;
 
             case 'dark_elf_noble':
@@ -664,11 +774,14 @@ const TerminalCombat: React.FC<TerminalCombatProps> = ({ player, updatePlayer, s
                 break;
 
             case 'void_walker':
-                // Void Tear - void damage and temporarily reduce max HP
+                // Void Tear - TEMPORARILY reduce max HP for this battle only
                 const voidTearReduction = 20;
-                const voidTearMaxHP = Math.max(10, player.maxHealth - voidTearReduction);
-                const voidTearHealth = Math.min(player.health, voidTearMaxHP);
-                updatePlayer({ maxHealth: voidTearMaxHP, health: voidTearHealth });
+                setTempMaxHPReduction(prev => prev + voidTearReduction);
+                // Cap current health to new effective max if needed
+                const voidEffectiveMax = Math.max(10, player.maxHealth - tempMaxHPReduction - voidTearReduction);
+                if (player.health > voidEffectiveMax) {
+                    updatePlayer({ health: voidEffectiveMax });
+                }
                 addLog(t.legend.combatMessages.voidTear || '🕳️ Void Tear! Your max HP temporarily reduced!');
                 break;
 
@@ -689,14 +802,26 @@ const TerminalCombat: React.FC<TerminalCombatProps> = ({ player, updatePlayer, s
     const handleEnemyDefeated = async () => {
         if (!currentEnemy) return;
 
+        // Get location modifiers for reward adjustments
+        const locationModifiers = GAME_CONSTANTS.LOCATION_MODIFIERS[player.location];
+
         // Economy rebalance v3.0: Cap gold at 100 to match server-side validation
         // Gold Shop: 0.01 BNB (~$7) = 1,000 gold, so max 100 gold/combat = ~$0.70
         const MAX_GOLD_PER_COMBAT = 100;
-        const goldEarned = Math.min(
-            Math.floor(Math.random() * (currentEnemy.goldMax - currentEnemy.goldMin + 1) + currentEnemy.goldMin),
-            MAX_GOLD_PER_COMBAT
-        );
-        const expEarned = currentEnemy.experienceReward;
+
+        // Base gold calculation
+        let baseGold = Math.floor(Math.random() * (currentEnemy.goldMax - currentEnemy.goldMin + 1) + currentEnemy.goldMin);
+        let baseExp = currentEnemy.experienceReward;
+
+        // Apply location modifiers if in a combat location
+        if (locationModifiers) {
+            baseGold = Math.floor(baseGold * locationModifiers.goldMultiplier);
+            baseExp = Math.floor(baseExp * locationModifiers.xpMultiplier);
+        }
+
+        // Cap gold after multipliers are applied
+        const goldEarned = Math.min(baseGold, MAX_GOLD_PER_COMBAT);
+        const expEarned = baseExp;
 
         addLog(``);
 
@@ -841,15 +966,18 @@ await refreshQuests();
 
         setTimeout(() => {
             generateEnemy();
-        }, 2000);
+        }, 800);  // Reduced from 2000ms - snappier gameplay
     };
 
     const handleItemDrop = async (enemy: Enemy, forceDrop: boolean = false) => {
         if (!enemy.itemDrops || enemy.itemDrops.length === 0) return;
 
+        // Get location modifiers for drop rate adjustments
+        const locationModifiers = GAME_CONSTANTS.LOCATION_MODIFIERS[player.location];
+
         // Calculate drop chance based on rarity (REBALANCED - Much harder to get rare items!)
         // Rare enemies with rare items should drop 1-5% of the time depending on charm
-        const dropChances = {
+        const dropChances: Record<string, number> = {
             'common': 0.05,      // 5% base
             'uncommon': 0.04,    // 4% base
             'rare': 0.01,        // 1% base (was 12%!)
@@ -858,7 +986,12 @@ await refreshQuests();
             'boss': 0.50         // 50% base (was 75%)
         };
 
-        const baseDropChance = forceDrop ? 1.0 : (dropChances[enemy.rarity] || 0.01);
+        let baseDropChance = forceDrop ? 1.0 : (dropChances[enemy.rarity] || 0.01);
+
+        // Apply location drop rate modifier
+        if (locationModifiers && !forceDrop) {
+            baseDropChance *= locationModifiers.dropRateMultiplier;
+        }
 
         // 🍀 CHARM BONUS: Increases drop chance by up to +4% (so 1% → 5% for rare items)
         // Formula: +0.08% per charm point (max +4% at 50 charm)
@@ -869,7 +1002,28 @@ await refreshQuests();
         // FIXED: Only drop ONE item per enemy (pick randomly from drop table)
         // This prevents multiple items from dropping in a single kill
         if (Math.random() < dropChance) {
-            const randomItemId = enemy.itemDrops[Math.floor(Math.random() * enemy.itemDrops.length)];
+            // For Castle location: filter items to only include uncommon+ quality
+            let eligibleItems = enemy.itemDrops;
+
+            if (locationModifiers?.guaranteedDropRarity) {
+                const rarityOrder = ['common', 'uncommon', 'rare', 'epic', 'legendary'];
+                const minRarityIndex = rarityOrder.indexOf(locationModifiers.guaranteedDropRarity);
+
+                // Filter to only items with rarity >= guaranteedDropRarity
+                eligibleItems = enemy.itemDrops.filter(itemId => {
+                    const checkItem = ACCESSORIES[itemId];
+                    if (!checkItem) return true; // Keep unknown items
+                    const itemRarityIndex = rarityOrder.indexOf(checkItem.rarity);
+                    return itemRarityIndex >= minRarityIndex;
+                });
+
+                // If no eligible items after filtering, use original list
+                if (eligibleItems.length === 0) {
+                    eligibleItems = enemy.itemDrops;
+                }
+            }
+
+            const randomItemId = eligibleItems[Math.floor(Math.random() * eligibleItems.length)];
             const item = ACCESSORIES[randomItemId];
 
             if (item) {
@@ -1030,7 +1184,9 @@ await refreshQuests();
 
     const showStats = () => {
         addLog(`YOU: ${player.name} [Lvl ${player.level}]`);
-        addLog(`HP: ${player.health}/${player.maxHealth} | STR: ${player.strength} | DEF: ${player.defense}`);
+        // Show effective max HP (reduced by Disease Bite / Void Tear) during battle
+        const displayMaxHP = tempMaxHPReduction > 0 ? `${effectiveMaxHP} (${player.maxHealth})` : `${player.maxHealth}`;
+        addLog(`HP: ${player.health}/${displayMaxHP} | STR: ${player.strength} | DEF: ${player.defense}`);
         if (currentEnemy) {
             addLog(``);
             addLog(`ENEMY: ${currentEnemy.name} [Lvl ${currentEnemy.level}]`);

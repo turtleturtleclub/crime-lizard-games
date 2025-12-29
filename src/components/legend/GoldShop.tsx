@@ -13,6 +13,7 @@ interface GoldShopProps {
     onClose: () => void;
     onPurchase: (goldAmount: number, turnBonus: number, serverPlayer?: { gold: number; goldInBank: number; turnsRemaining: number; maxTurns: number }) => void;
     tokenId?: number;
+    onBuyClzd?: () => void;
 }
 
 type PaymentMethod = 'bnb' | 'clzd';
@@ -24,7 +25,7 @@ interface BonusInfo {
     stakingXpBonus: number;
 }
 
-const GoldShop: React.FC<GoldShopProps> = ({ onClose, onPurchase, tokenId }) => {
+const GoldShop: React.FC<GoldShopProps> = ({ onClose, onPurchase, tokenId, onBuyClzd }) => {
     const { account, signer, provider, currentChainId } = useContext(WalletContext);
     const { t } = useLanguage();
     const [purchasing, setPurchasing] = useState(false);
@@ -464,6 +465,24 @@ const GoldShop: React.FC<GoldShopProps> = ({ onClose, onPurchase, tokenId }) => 
                         <span className="text-purple-400 text-sm">
                             {t.goldShop.yourClzdBalance} <span className="font-bold text-white">{formatClzd(clzdBalance)} CLZD</span>
                         </span>
+                    </div>
+                )}
+
+                {/* Need more CLZD? - Buy CLZD button when on CLZD tab */}
+                {paymentMethod === 'clzd' && onBuyClzd && (
+                    <div className="bg-black border border-[#00FF88] p-2 mb-3">
+                        <div className="flex items-center justify-between gap-2">
+                            <span className="text-[#00FF88] text-xs">Need more CLZD?</span>
+                            <button
+                                onClick={() => {
+                                    onClose();
+                                    onBuyClzd();
+                                }}
+                                className="px-3 py-1 bg-[#00AA55] border border-[#00FF88] text-[#00FF88] text-xs font-bold hover:bg-[#00BB66] transition-all"
+                            >
+                                🦎 BUY CLZD
+                            </button>
+                        </div>
                     </div>
                 )}
 

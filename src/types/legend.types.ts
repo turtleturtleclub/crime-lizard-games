@@ -90,6 +90,9 @@ export interface PlayerCharacter {
     hasDefeatedCrimeLord: boolean;
     crimeLordDefeats: number;
 
+    // City District - Purchased Intel (one-time purchases)
+    purchasedIntel?: string[];
+
     // AI Interaction
     lastAIInteraction?: Date;
     aiRelationship: number; // -100 to 100
@@ -98,6 +101,7 @@ export interface PlayerCharacter {
     saveStates: GameSaveState[];
     lastSafeSleep?: Date; // When player last slept at inn/brothel
     sleptSafely: boolean; // Did they sleep at a safe location before logging out
+    sleepLocation?: 'inn' | 'brothel' | null; // Where the player last slept (for protection duration)
 
     // Death & Respawn
     isDead?: boolean; // Is the player currently dead (needs respawn)
@@ -284,6 +288,7 @@ export type GameLocation =
     | 'daily_news'
     | 'arena'
     | 'poor_district'
+    | 'city_district'
     | 'castle' // Renamed from 'castle' for better theming
     | 'crime_lord_lair'
     | 'boss_queue'

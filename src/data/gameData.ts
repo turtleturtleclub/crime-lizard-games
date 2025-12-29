@@ -2050,6 +2050,41 @@ export const GAME_CONSTANTS = {
     BROTHEL_HEALTH_BONUS: 10, // Extra max health from brothel rest
     BROTHEL_STAT_BONUS: 1, // +1 to random stat from brothel rest
 
+    // Protection Duration Constants (in milliseconds)
+    INN_PROTECTION_DURATION: 8 * 60 * 60 * 1000, // 8 hours
+    BROTHEL_PROTECTION_DURATION: 12 * 60 * 60 * 1000, // 12 hours
+
+    // Location-Specific Combat Modifiers
+    LOCATION_MODIFIERS: {
+        forest: {
+            levelRange: { min: 1, max: 15 },
+            goldMultiplier: 1.5, // +50% gold
+            xpMultiplier: 0.5, // -50% XP
+            dropRateMultiplier: 1.0, // Normal drop rate
+            guaranteedDropRarity: null // No guaranteed drops
+        },
+        castle: {
+            levelRange: { min: 10, max: 25 },
+            goldMultiplier: 1.0, // Normal gold
+            xpMultiplier: 1.0, // Normal XP
+            dropRateMultiplier: 1.0, // Normal base rate
+            guaranteedDropRarity: 'uncommon' // Guaranteed uncommon+ on drop
+        },
+        crime_lord_lair: {
+            levelRange: { min: 20, max: 50 },
+            goldMultiplier: 0.7, // -30% gold
+            xpMultiplier: 1.5, // +50% XP
+            dropRateMultiplier: 0.5, // -50% drop rate
+            guaranteedDropRarity: null
+        }
+    } as Record<string, {
+        levelRange: { min: number; max: number };
+        goldMultiplier: number;
+        xpMultiplier: number;
+        dropRateMultiplier: number;
+        guaranteedDropRarity: string | null;
+    }>,
+
     // Bank Loan System
     LOAN_MIN_AMOUNT: 100, // Minimum loan amount
     LOAN_MAX_AMOUNT: 5000, // Maximum loan amount
@@ -2071,7 +2106,7 @@ export const LOCATION_DESCRIPTIONS: Record<string, { name: string; description: 
     forest: {
         name: 'The Dark Forest',
         emoji: '🌲',
-        description: 'A dangerous forest filled with monsters and beasts. Hunt here to gain gold and experience!'
+        description: 'Rich pickings for those willing to face weaker foes. Gold glitters among the shadows, though glory is harder to find.'
     },
     healer: {
         name: 'Healer\'s Hut',
@@ -2086,7 +2121,7 @@ export const LOCATION_DESCRIPTIONS: Record<string, { name: string; description: 
     inn: {
         name: 'The Inn',
         emoji: '🏨',
-        description: 'Sleep here to protect your gold from thieves and restore your daily turns.'
+        description: 'Safe sleep for smart thieves. Rest here for 8 hours of protection from gankers.'
     },
     player_list: {
         name: 'Player List',
@@ -2108,6 +2143,11 @@ export const LOCATION_DESCRIPTIONS: Record<string, { name: string; description: 
         emoji: '💀',
         description: 'Where rugged lizards gather. Donate your gains to help degens who got rekt.'
     },
+    city_district: {
+        name: 'The City District',
+        emoji: '🏛️',
+        description: 'Where gold speaks louder than law. Bribe officials and buy intel in this corrupt metropolis.'
+    },
     boss_queue: {
         name: 'Boss Queue',
         emoji: '👥',
@@ -2116,7 +2156,7 @@ export const LOCATION_DESCRIPTIONS: Record<string, { name: string; description: 
     brothel: {
         name: 'Violet\'s Brothel',
         emoji: '💋',
-        description: 'A night of pleasure grants stat bonuses and premium protection.'
+        description: 'Luxury rest for legends. Stat bonuses and 12 hours of premium protection await those who can afford it.'
     },
     casino: {
         name: 'Crime Lizard Casino',
@@ -2126,12 +2166,12 @@ export const LOCATION_DESCRIPTIONS: Record<string, { name: string; description: 
     castle: {
         name: 'The Castle',
         emoji: '🏰',
-        description: 'Target wealthy nobles for big heists. Guarded by elite knights.'
+        description: 'Where treasures and rare artifacts await the brave. The nobles guard their precious relics jealously.'
     },
     crime_lord_lair: {
         name: 'Crime Lord\'s Lair',
         emoji: '👹',
-        description: 'Face the ultimate evil! Only the strongest dare enter.'
+        description: 'Ultimate challenge, ultimate glory. The path to legendary status lies within, though riches are scarce.'
     },
     // New expanded locations for richer RPG experience
     enchanted_forest: {
@@ -2707,8 +2747,10 @@ export function calculateDeathPenalties(player: any): {
     const goldLost = Math.floor(player.gold * GAME_CONSTANTS.DEATH_GOLD_LOSS_PERCENT);
 
     // XP loss is based on progress through current level
-    const currentLevelXP = player.experience - (LEVEL_REQUIREMENTS[player.level - 1] || 0);
-    const xpLost = Math.floor(currentLevelXP * GAME_CONSTANTS.DEATH_XP_LOSS_PERCENT);
+    // FIXED: player.experience IS already XP within current level (0 to experienceToNextLevel)
+    // The old code incorrectly subtracted cumulative LEVEL_REQUIREMENTS, causing NEGATIVE xpLost
+    // which resulted in players GAINING XP on death instead of losing it!
+    const xpLost = Math.max(0, Math.floor((player.experience || 0) * GAME_CONSTANTS.DEATH_XP_LOSS_PERCENT));
 
     const respawnHP = Math.floor(player.maxHealth * GAME_CONSTANTS.DEATH_RESPAWN_HP_PERCENT);
     const turnsLost = GAME_CONSTANTS.DEATH_RESPAWN_COOLDOWN_TURNS;

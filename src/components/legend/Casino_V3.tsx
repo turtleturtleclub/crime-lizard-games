@@ -13,8 +13,8 @@ import { useLegendGame } from '../../contexts/LegendGameContext';
 import { WalletContext } from '../../providers/WalletContext';
 import { NETWORKS } from '../../providers/WalletProvider';
 import { ethers } from 'ethers';
-import { SLOTS_V11_ABI } from '../../slotsV11Abi';
-const SLOTS_ABI = SLOTS_V11_ABI;
+import { SLOTS_V12_ABI } from '../../slotsV12Abi';
+const SLOTS_ABI = SLOTS_V12_ABI;
 import { toast } from 'react-toastify';
 import { useModalClose } from '../../hooks/useModalClose';
 import { useLanguage } from '../../contexts/LanguageContext';
@@ -26,17 +26,18 @@ interface CasinoProps {
     setGameMessage: (message: string) => void;
 }
 
-// Slots Contract Type (V11 - Server-signed randomness)
+// Slots Contract Type (V12 - Commit-Reveal Provably Fair)
 type CrimeLizardSlots = ethers.BaseContract & {
     // Character management
     selectCharacter(tokenId: bigint): Promise<ethers.TransactionResponse>;
     getActiveCharacter(player: string): Promise<bigint>;
 
-    // Game functions (V11: server-signed randomness)
-    spin(betAmount: bigint, randomSeed: string, nonce: string, signature: string, overrides?: ethers.Overrides): Promise<ethers.TransactionResponse>;
+    // Game functions (V12: commit-reveal randomness)
+    spin(betAmount: bigint, clientSeed: string, overrides?: ethers.Overrides): Promise<ethers.TransactionResponse>;
     freeSpins(address: string): Promise<bigint>;
     jackpot(): Promise<bigint>;
-    playerStats(player: string): Promise<any>;
+    getPlayerStats(player: string): Promise<any>;
+    getAvailableSeedCount(): Promise<bigint>;
 
     // Events
     on(event: string, listener: (...args: any[]) => void): ethers.BaseContract;
@@ -47,7 +48,7 @@ type CrimeLizardSlots = ethers.BaseContract & {
 const SYMBOLS = [
     '/assets/floki.png',      // 0: Floki
     '/assets/babydoge.png',   // 1: Baby Doge
-    '/assets/lizard.png',     // 2: LIZARD (Bonus) - Reordered to match V4!
+    '/assets/clzdLogo.png',   // 2: CLZD (Bonus) - Reordered to match V4!
     '/assets/cheems.png',     // 3: Cheems
     '/assets/simonscat.png',  // 4: Simons Cat
     '/assets/banana.png',     // 5: Banana
@@ -58,7 +59,7 @@ const SYMBOLS = [
 ];
 
 const SYMBOL_NAMES = [
-    'Floki', 'Baby Doge', 'LIZARD', 'Cheems', 'Simons Cat',
+    'Floki', 'Baby Doge', 'CLZD', 'Cheems', 'Simons Cat',
     'Banana', 'Quack', 'Broccoli', 'BNB', 'SCATTER'
 ];
 
@@ -177,38 +178,10 @@ const Casino: React.FC<CasinoProps> = ({ player, updatePlayer, onClose, setGameM
         }
     }, [account, selectedCharacter]);
 
-    // Update gold in database after win/loss (database-first, then background blockchain sync)
-    const updateDatabaseGold = useCallback(async (goldChange: number, reason: string) => {
-        if (!account || !selectedCharacter) return;
-
-        try {
-            const response = await fetch('/api/legend/update-gold', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    walletAddress: account,
-                    tokenId: Number(selectedCharacter.tokenId),
-                    goldChange,
-                    reason
-                })
-            });
-
-            if (response.ok) {
-                const data = await response.json();
-// Update local display
-                setDatabaseGold(data.newGold);
-
-                // Update player context
-                updatePlayer({ gold: data.newGold });
-
-                return data;
-            } else {
-                console.error('❌ Casino: Failed to update database gold:', await response.text());
-            }
-        } catch (error) {
-            console.error('❌ Casino: Failed to update database gold:', error);
-        }
-    }, [account, selectedCharacter, updatePlayer]);
+    // NOTE: updateDatabaseGold removed - gold is now handled DATABASE-FIRST:
+    // - Bet deducted via /api/legend/slots-spin before calling contract
+    // - Winnings added by server when it sees SpinResult event
+    // - Frontend refreshes from database after result
 
     // Initialize slots contract with WebSocket for events
     useEffect(() => {
@@ -394,7 +367,7 @@ await tx.wait();
     const refreshPlayerStats = useCallback(async () => {
         if (contract && account && isMountedRef.current) {
             try {
-                const stats = await contract.playerStats(account);
+                const stats = await contract.getPlayerStats(account);
                 if (isMountedRef.current) setSpinsCount(Number(stats.totalSpins || stats[0]));
             } catch (error) {
                 if (isMountedRef.current) console.error('Failed to refresh player stats:', error);
@@ -458,6 +431,38 @@ await tx.wait();
                 processedSequenceNumbers.current = new Set(idsArray.slice(-25));
             }
 
+            // DATABASE-FIRST: Call server API to deduct bet from database
+            // This returns a clientSeed for provably fair and updates database gold
+            let clientSeed: string;
+
+            if (!isFree) {
+                const apiResponse = await fetch('/api/legend/slots-spin', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        walletAddress: account,
+                        tokenId: Number(selectedCharacter.tokenId), // Convert BigInt to number for JSON
+                        betAmount: betAmount
+                    })
+                });
+
+                const apiResult = await apiResponse.json();
+
+                if (!apiResult.success) {
+                    setSpinning(false);
+                    setIsProcessingTx(false);
+                    spinningRef.current = false;
+                    toast.error(apiResult.error || 'Failed to place bet');
+                    return;
+                }
+
+                clientSeed = apiResult.clientSeed;
+                setDatabaseGold(apiResult.goldAfter);
+            } else {
+                // Free spin - generate random clientSeed locally
+                clientSeed = ethers.hexlify(ethers.randomBytes(32));
+            }
+
             // Get signer for transaction
             const signer = await provider.getSigner();
             const contractWithSigner = contract.connect(signer) as CrimeLizardSlots;
@@ -467,130 +472,116 @@ await tx.wait();
             // whether to deduct gold based on freeSpins balance
             const betAmountGold = BigInt(betAmount);
 
-            // Request server-signed randomness for V11
-            const signatureResponse = await fetch('/api/legend/slots-signature', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    playerAddress: account,
-                    characterId: Number(selectedCharacter.tokenId),
-                    betAmount: betAmount
-                })
-            });
-
-            if (!signatureResponse.ok) {
-                const errorData = await signatureResponse.json();
-                throw new Error(errorData.error || 'Failed to get randomness signature');
-            }
-
-            const { randomSeed, nonce, signature } = await signatureResponse.json();
-
             // Start spin animation
             sounds.spin.play();
             startSpinAnimation();
 
-            // Estimate gas with buffer for edge cases (jackpots, bonus games, free spins)
-            let gasLimit = 1000000; // Conservative default (2.5x average usage)
+            // Estimate gas for V12 spin (simpler call)
+            let gasLimit = 500000; // Conservative default for commit-reveal
 
             try {
-                // Use getFunction to properly access estimateGas on the contract method
                 const gasEstimate = await contractWithSigner.getFunction('spin').estimateGas(
-                    betAmountGold, randomSeed, nonce, signature
+                    betAmountGold, clientSeed
                 );
-                // Use 2x the estimate for safety, with minimum of 800k
                 gasLimit = Number(gasEstimate) * 2;
-                if (gasLimit < 800000) gasLimit = 800000;
+                if (gasLimit < 300000) gasLimit = 300000;
             } catch (gasError) {
                 console.warn('⚠️ Gas estimation failed, using conservative default:', gasLimit);
             }
 
-            // V11: Server-signed randomness - pass (betAmount, randomSeed, nonce, signature)
-            const tx = await contractWithSigner.spin(betAmountGold, randomSeed, nonce, signature, { gasLimit });
-// Wait for transaction confirmation
+            // V12: Commit-reveal - pass (betAmount, clientSeed)
+            // This emits SpinRequested, then server reveals seed and SpinResult is emitted
+            const tx = await contractWithSigner.spin(betAmountGold, clientSeed, { gasLimit });
+// Wait for spin transaction confirmation
             const receipt = await tx.wait();
-setIsProcessingTx(false);
+            setIsProcessingTx(false);
 
-            // ✅ INSTANT: Refresh gold balance, jackpot, and stats immediately after tx confirmation
-await refreshGoldBalance();
-            await syncGoldFromBlockchain(); // Sync to Legend player state
-            refreshJackpot();
-            refreshPlayerStats();
+            // V12: Parse SpinRequested to get seedId, then wait for SpinResult from reveal
+            let seedId: string | null = null;
 
-            // V4: Instant randomness - parse events from receipt logs!
             if (receipt && receipt.logs) {
-
-                let foundSpinResult = false;
-                let foundFreeSpins = false;
-
                 for (const log of receipt.logs) {
                     try {
                         const parsedLog = contract.interface.parseLog({
                             topics: [...log.topics],
                             data: log.data
                         });
-
-                        if (parsedLog && parsedLog.name === 'SpinResult') {
-                            foundSpinResult = true;
-                            const args = parsedLog.args;
-                            // Use nonce as unique identifier (each spin has unique nonce)
-                            const spinNonce = args.nonce?.toString() || `receipt-${Date.now()}`;
-
-                            // Check if already processed
-                            if (processedSequenceNumbers.current.has(spinNonce)) {
-                                continue;
-                            }
-
-                            // Update session stats
-                            if (!isFree) {
-                                setTotalLost(prev => prev + betAmount);
-                            }
-                            // Note: spinsCount now updated from contract via refreshPlayerStats()
-
-                            // Update player casino stats
-                            updatePlayer({
-                                casinoSpins: (player.casinoSpins || 0) + 1,
-                                casinoGoldLost: (player.casinoGoldLost || 0) + (isFree ? 0 : betAmount)
-                            });
-
-                            processSpinResult(args, spinNonce);
+                        if (parsedLog && parsedLog.name === 'SpinRequested') {
+                            seedId = parsedLog.args.seedId?.toString();
+                            break;
                         }
-
-                        // ✅ Also parse FreeSpinsAwarded events from receipt!
-                        if (parsedLog && parsedLog.name === 'FreeSpinsAwarded') {
-                            foundFreeSpins = true;
-                            const args = parsedLog.args;
-                            const spinsAwarded = Number(args.spinsAwarded);
-                            const totalFreeSpins = Number(args.totalFreeSpins);
-setFreeSpinsCount(totalFreeSpins);
-                            toast.success(`🎁 Awarded ${spinsAwarded} Free Spins! Total: ${totalFreeSpins}`, {
-                                autoClose: 5000,
-                                theme: 'dark'
-                            });
-                            sounds.freeSpin.play();
-                        }
-                    } catch (parseError) {
-                        // Not a relevant event, continue
+                    } catch {
                         continue;
                     }
                 }
+            }
 
-                if (foundFreeSpins) {
-}
+            if (!seedId) {
+                console.warn('⚠️ V12: No SpinRequested found, waiting for result...');
+            }
 
-                if (!foundSpinResult) {
-                    console.warn('⚠️ Casino V5: No SpinResult event found in receipt');
-                    toast.warning('Result not found. Refreshing balance...', { autoClose: 3000 });
-                    setSpinning(false);
-                    spinningRef.current = false;
-                    stopSpinAnimation();
-                    await refreshGoldBalance();
-                    await syncGoldFromBlockchain();
-                    refreshJackpot();
-                    refreshFreeSpins();
+            // V12: Wait for SpinResult event (comes from server's revealSeed transaction)
+            // Set up a promise that resolves when we get the SpinResult
+            const waitForResult = new Promise<any>((resolve, reject) => {
+                const timeout = setTimeout(() => {
+                    contract.off('SpinResult', listener);
+                    reject(new Error('Timeout waiting for spin result'));
+                }, 30000); // 30 second timeout
+
+                const listener = (player: string, characterId: bigint, resultSeedId: bigint, payout: bigint, jackpotWon: bigint, reels: number[], winningPaylines: number[], isBonusGame: boolean, resultBetAmount: bigint, timestamp: bigint) => {
+                    // Check if this result is for our spin
+                    if (player.toLowerCase() === account?.toLowerCase() &&
+                        (!seedId || resultSeedId.toString() === seedId)) {
+                        clearTimeout(timeout);
+                        contract.off('SpinResult', listener);
+                        resolve({
+                            player,
+                            characterId,
+                            seedId: resultSeedId,
+                            payout,
+                            jackpotWon,
+                            reels,
+                            winningPaylines,
+                            isBonusGame,
+                            betAmount: resultBetAmount,
+                            timestamp
+                        });
+                    }
+                };
+
+                contract.on('SpinResult', listener);
+            });
+
+            try {
+                const resultArgs = await waitForResult;
+                const spinNonce = resultArgs.seedId?.toString() || `receipt-${Date.now()}`;
+
+                // Check if already processed
+                if (!processedSequenceNumbers.current.has(spinNonce)) {
+                    // Update session stats
+                    if (!isFree) {
+                        setTotalLost(prev => prev + betAmount);
+                    }
+
+                    // Update player casino stats
+                    updatePlayer({
+                        casinoSpins: (player.casinoSpins || 0) + 1,
+                        casinoGoldLost: (player.casinoGoldLost || 0) + (isFree ? 0 : betAmount)
+                    });
+
+                    processSpinResult(resultArgs, spinNonce);
                 }
-            } else {
-                console.error('❌ Casino V5: No receipt or logs available');
-                toast.error('Transaction confirmed but result unclear. Check your balance.');
+
+                // Refresh balances after result
+                await refreshGoldBalance();
+                await syncGoldFromBlockchain();
+                refreshJackpot();
+                refreshPlayerStats();
+                refreshFreeSpins();
+
+            } catch (waitError) {
+                console.warn('⚠️ V12: Timeout or error waiting for result:', waitError);
+                toast.warning('Result delayed. Refreshing balance...', { autoClose: 3000 });
                 setSpinning(false);
                 spinningRef.current = false;
                 stopSpinAnimation();
@@ -711,8 +702,8 @@ setFreeSpinsCount(totalFreeSpins);
             } else if (isBonusGame && winningPaylines.length === 0) {
                 // Pure bonus game win (no payline wins)
                 sounds.win.play();
-                setGameMessage(`🦎 LIZARD BONUS! Won ${payoutAmount.toLocaleString()} gold!`);
-                toast.success(`🦎 LIZARD BONUS! Won ${payoutAmount.toLocaleString()} gold!`);
+                setGameMessage(`🦎 CLZD BONUS! Won ${payoutAmount.toLocaleString()} gold!`);
+                toast.success(`🦎 CLZD BONUS! Won ${payoutAmount.toLocaleString()} gold!`);
             } else if (isBonusGame) {
                 // Payline win + bonus game
                 sounds.win.play();
@@ -742,22 +733,32 @@ setFreeSpinsCount(totalFreeSpins);
         // ============================================
         // STEP 5: Background updates (async, after visuals are done)
         // ============================================
-        const isFree = freeSpinsCount > 0;
-        const betCost = isFree ? 0 : betAmount;
-        const goldChange = payoutAmount - betCost;
+        // NOTE: Gold is now handled DATABASE-FIRST:
+        // - Bet was deducted from database BEFORE calling contract (via /api/legend/slots-spin)
+        // - Server adds winnings to database when it sees SpinResult event
+        // - We just need to refresh the display to show updated gold from database
 
-        // These happen in background - don't block the UI
-        if (goldChange !== 0) {
-            updateDatabaseGold(
-                goldChange,
-                `Casino ${goldChange > 0 ? 'win' : 'loss'}: ${Math.abs(goldChange)} gold`
-            ).catch(err => console.error('Failed to update database gold:', err));
-        }
+        // Refresh gold from database to show the server's updated value
+        // Small delay to allow server to process SpinResult and update database
+        setTimeout(async () => {
+            try {
+                const response = await fetch(`/api/legend/player/${account}/${selectedCharacter?.tokenId}`);
+                if (response.ok) {
+                    const playerData = await response.json();
+                    if (playerData.gold !== undefined) {
+                        setDatabaseGold(playerData.gold);
+                        updatePlayer({ gold: playerData.gold });
+                    }
+                }
+            } catch (err) {
+                console.error('Failed to refresh gold from database:', err);
+            }
+        }, 3000); // 3 second delay to allow server to process
 
         // Refresh jackpot and free spins in background
         refreshJackpot();
         refreshFreeSpins();
-    }, [convertPaylinesToPositions, player, betAmount, freeSpinsCount, refreshFreeSpins, refreshJackpot, setGameMessage, updatePlayer, updateDatabaseGold]);
+    }, [convertPaylinesToPositions, player, betAmount, freeSpinsCount, refreshFreeSpins, refreshJackpot, setGameMessage, updatePlayer, account, selectedCharacter]);
 
     // Spin animation helpers
     const startSpinAnimation = () => {
@@ -1146,8 +1147,8 @@ setFreeSpinsCount(totalFreeSpins);
                             <span className="text-cyan-400">🎁 SCATTER: {t.casino.freeSpins345}</span>
                         </div>
                         <div className="flex items-center gap-1 md:gap-2 text-[10px] md:text-xs">
-                            <img src={SYMBOLS[2]} alt="LIZARD" className="w-4 h-4 md:w-5 md:h-5 object-contain flex-shrink-0" />
-                            <span className="text-green-400">🦎 LIZARD: {t.casino.bonusGame3}</span>
+                            <img src={SYMBOLS[2]} alt="CLZD" className="w-4 h-4 md:w-5 md:h-5 object-contain flex-shrink-0" />
+                            <span className="text-green-400">🦎 CLZD: {t.casino.bonusGame3}</span>
                         </div>
                     </div>
                 </div>

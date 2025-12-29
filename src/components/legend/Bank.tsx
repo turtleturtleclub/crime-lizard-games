@@ -264,7 +264,7 @@ const response = await fetch('/api/legend/bank/withdraw', {
                 <div className="flex gap-2 mb-4">
                     <button
                         onClick={() => setActiveTab('banking')}
-                        className={`flex-1 py-2 px-4 font-bold border-2 transition-all ${
+                        className={`flex-1 py-2 px-2 md:px-4 font-bold border-2 transition-all text-xs md:text-base ${
                             activeTab === 'banking'
                                 ? 'bg-[#00AA55] border-[#00FF88] text-[#00FF88]'
                                 : 'bg-black border-gray-600 text-gray-400 hover:border-gray-500'
@@ -274,7 +274,7 @@ const response = await fetch('/api/legend/bank/withdraw', {
                     </button>
                     <button
                         onClick={() => setActiveTab('loans')}
-                        className={`flex-1 py-2 px-4 font-bold border-2 transition-all ${
+                        className={`flex-1 py-2 px-2 md:px-4 font-bold border-2 transition-all text-xs md:text-base ${
                             activeTab === 'loans'
                                 ? 'bg-red-900 border-red-500 text-red-500'
                                 : 'bg-black border-gray-600 text-gray-400 hover:border-gray-500'

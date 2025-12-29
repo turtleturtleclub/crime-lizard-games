@@ -624,6 +624,7 @@ export interface Translations {
             arena: string;
             dailyNews: string;
             poorDistrict: string;
+            cityDistrict: string;
             castle: string;
             crimeLordLair: string;
             bossQueue: string;
@@ -646,6 +647,7 @@ export interface Translations {
             arena: string;
             dailyNews: string;
             poorDistrict: string;
+            cityDistrict: string;
             castle: string;
             crimeLordLair: string;
             bossQueue: string;
@@ -1032,6 +1034,24 @@ export interface Translations {
             donatedSuccess: string;
             xpAndCharm: string;
         };
+        // City District
+        cityDistrict: {
+            title: string;
+            subtitle: string;
+            storyPart1: string;
+            storyPart2: string;
+            corruptOfficials: string;
+            blackMarketIntel: string;
+            greasePalms: string;
+            infoBroker: string;
+            bribe: string;
+            buy: string;
+            bribeSuccess: string;
+            intelSuccess: string;
+            notEnoughGold: string;
+            yourGold: string;
+            leave: string;
+        };
         // Footer
         footer: {
             dailyNews: string;
@@ -1159,6 +1179,31 @@ export interface Translations {
         bothEarnPoints: string;
         secureInstant: string;
         escClose: string;
+    };
+    // Satchel Shop (MEV-Protected Swap)
+    satchelShop: {
+        title: string;
+        tabLabel: string;
+        description: string;
+        connectWallet: string;
+        switchToBsc: string;
+        walletBalance: string;
+        youllReceive: string;
+        bnbAmount: string;
+        max: string;
+        expectedOutput: string;
+        minReceived: string;
+        slippage: string;
+        signing: string;
+        pending: string;
+        success: string;
+        error: string;
+        swapSuccess: string;
+        transactionCancelled: string;
+        insufficientBnb: string;
+        processing: string;
+        buyButton: string;
+        mevInfo: string;
     };
     // Staking Panel
     staking: {
